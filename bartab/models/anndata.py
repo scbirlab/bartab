@@ -10,6 +10,7 @@ from numpy.typing import ArrayLike
 
 from .base import Model
 from .linear import OLSModel, WLSModel
+from .nonlinear import HillFitnessModel
 from ..transforms import compute_log_ratios
 
 
@@ -114,7 +115,7 @@ class AnnDataOLSModel(AnnDataModel, OLSModel):
         )
 
 
-class AnnDataOLSModel(AnnDataModel, HillModel):
+class AnnDataOLSModel(AnnDataModel, HillFitnessModel):
     def fit(self, adata, *args, concentration: str, weight_kwargs=None, **kwargs):
         return super().fit(
             adata,
