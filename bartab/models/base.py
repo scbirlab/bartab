@@ -93,7 +93,7 @@ class Model(ABC):
         weights: Optional[ArrayLike] = None, 
         param_names: Optional[str] = None, 
         min_obs: int = 3,
-        weight_kwargs: Optional[Mapping[str, ...]] = None,
+        weight_kwargs: Optional[Mapping[str, Any]] = None,
         **kwargs
     ) -> List[Dict[str, Union[float, int]]]:
         if valid is None:

@@ -45,6 +45,9 @@ def _fitness(args: Namespace) -> None:
     model = AnnDataWLSModel()
     results = model.fit(adata=adata)
     print_err(results)
+    results.write_csvs(
+        args.output,
+    )
     return None
 
 
@@ -66,6 +69,7 @@ def main() -> None:
     outputs_named = CLIOption(
         '--output', '-o', 
         type=str,
+        required=True,
         help='Output file.',
     )
     outputs = CLIOption(
