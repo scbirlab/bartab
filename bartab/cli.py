@@ -42,7 +42,16 @@ def _fitness(args: Namespace) -> None:
         use_spike=args.use_spike,
     )
     print_err(adata)
-    model = AnnDataWLSModel()
+    if args.concentration_column is not None:
+        model = AnnDataWLSModel()
+        kwargs = {}
+    else:
+        if args.concentration_column not in adata.var:
+            raise ValueError(
+                f"Concentration column '{args.concentration_column}' must be in the --sample-sheet."
+            )
+        model = AnnDataHillModel()
+        kwargs = {"concentraiton": args.concentration_column}
     results = model.fit(adata=adata)
     print_err(results)
     results.write_csvs(

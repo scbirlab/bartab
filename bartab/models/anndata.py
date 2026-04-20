@@ -112,3 +112,18 @@ class AnnDataOLSModel(AnnDataModel, OLSModel):
             weights=None,
             **kwargs,
         )
+
+
+class AnnDataOLSModel(AnnDataModel, HillModel):
+    def fit(self, adata, *args, concentration: str, weight_kwargs=None, **kwargs):
+        return super().fit(
+            adata,
+            *args,
+            concentration=adata.var[concentration].values,
+            weight_kwargs={
+                "raw": adata.X,
+                "control_mask": adata.obs["__is_reference__"].values,
+                "groups": adata.var["__culture_index__"].values,
+            },
+            **kwargs,
+        )

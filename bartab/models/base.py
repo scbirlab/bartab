@@ -1,5 +1,5 @@
 """Base classes for fitness models."""
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 from abc import ABC, abstractmethod
 
 import pandas as pd
