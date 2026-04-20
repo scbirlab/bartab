@@ -1,0 +1,6 @@
+strain_id,true_fitness,is_reference,is_spike
+wt,1.0,True,False
+spike,0.0,False,True
+mut_A,1.5,False,False
+mut_B,0.5,False,False
+mut_C,0.9,False,False

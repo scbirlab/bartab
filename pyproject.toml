@@ -1,6 +1,6 @@
 [project]
-name = "temp-python-package"
-version = "0.0.2"
+name = "bartab"
+version = "0.0.1"
 authors = [
   { name="Eachan Johnson", email="eachan.johnson@crick.ac.uk" },
 ]
@@ -9,7 +9,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 keywords = [
-  "template",
+  "biology",
+  "statistics",
+  "sequencing",
+  "crispr",
+  "crispri-seq",
+  "bar-seq",
 ]
 
 classifiers = [  
@@ -26,29 +31,35 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
 dependencies = [
-  
+  "anndata",
+  "carabiner-tools[pd,mpl]>=0.0.5.post3",
+  #"pydeseq2",
+  "scipy",
+  "scikit-learn",
+  "numpy",
+  "statsmodels",
 ]
 
 [project.optional-dependencies]
 all = []
-#tf = ["duvida", "tensorflow"]
-#jax = ["jax>=0.5.3"]
+dev = ["pytest>=7.4", "pytest-cov", "flake8"]
 
 [project.urls]
-"Homepage" = "https://github.com/scbirlab/py-template"
-"Bug Tracker" = "https://github.com/scbirlab/py-template/issues"
+"Homepage" = "https://github.com/scbirlab/bartab"
+"Bug Tracker" = "https://github.com/scbirlab/bartab/issues"
 
 [project.scripts] 
-pytemplate = "py_template.cli:main"
+bartab = "bartab.cli:main"
 
 [tool.setuptools]
 # If there are data files included in your packages that need to be
 # installed, specify them here.
-package-data = {pytemplate = ["data/*.json"]}
+package-data = {bartab = ["data/*.json"]}
 
 [build-system]
 # These are the assumed default build requirements from pip:
@@ -57,4 +68,4 @@ requires = ["setuptools>=43.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [test]
-deps = ["pytest>=7.4", "pytest-cov", "py-template[all]"] 
+deps = ["pytest>=7.4", "pytest-cov", "bartab[dev]"] 
