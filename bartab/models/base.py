@@ -21,6 +21,10 @@ class Model(ABC):
     def _fit(self, y: ArrayLike, x: ArrayLike, weights: ArrayLike, param_names: Iterable[str], **kwargs):
         ...
 
+    # @abstractmethod
+    # def predict(self, x: ArrayLike, params: ArrayLike, **kwargs):
+    #     ...
+
     @staticmethod
     def _fitness_transform(results: Mapping[str, float], **kwargs):
         return results
@@ -72,7 +76,7 @@ class Model(ABC):
         y = y[valid]
         x = x[valid]
         weights = self.calculate_weights(y, weights)
-        betas, cis, ses, ps, other = self._fit(y, x, weights=weights, param_names=param_names, **kwargs)
+        betas, cis, ses, ps, preds, other = self._fit(y, x, weights=weights, param_names=param_names, **kwargs)
         result = betas | {
             f"{k}_p": v 
             for k, v in ps.items()
@@ -83,7 +87,7 @@ class Model(ABC):
             for k, v in cis.items() 
             for j, _v in zip(["low", "high"], v)
         } | {"nobs": y.shape[0]} | other
-        return self._fitness_transform(result)
+        return self._fitness_transform(result), (x, y, preds)
 
     def fit(
         self, 
@@ -96,6 +100,7 @@ class Model(ABC):
         weight_kwargs: Optional[Mapping[str, Any]] = None,
         **kwargs
     ) -> List[Dict[str, Union[float, int]]]:
+            
         if valid is None:
             valid = np.ones(Y.shape[0], dtype=bool)
         finite_X = np.isfinite(x)
@@ -108,13 +113,17 @@ class Model(ABC):
             weights = [None] * Y.shape[0]
         else:
             weights = self.calculate_weights_matrix(Y, weights, **weight_kwargs)
+        if Y.shape[0] > 10:
+            from tqdm.auto import tqdm
+            Y = tqdm(Y, desc="Fitting models")
+        _preds = []
         for i, (y, finite_y, w, _valid) in enumerate(zip(
             Y,
             finite_Y,
             weights,
             valid
         )):
-            this_base_result = base_result | {"__i__": i}
+            this_base_result = base_result | {"i": i}
             this_valid = _valid & finite_y & finite_X
             if w is not None:
                 this_valid = this_valid & np.isfinite(w) & (w > 0.)
@@ -123,7 +132,7 @@ class Model(ABC):
                 results.append(this_base_result)
                 continue
 
-            result = self.fit_obs(
+            result, (x, y, preds) = self.fit_obs(
                 y, 
                 x, 
                 valid=this_valid, 
@@ -132,8 +141,13 @@ class Model(ABC):
                 **kwargs,
             )
             results.append(this_base_result | result | {"fit_status": "ok"})
-
-        return results
+            _preds.append((x, y, preds))
+        _preds = (
+            np.concatenate([_x for _x, *_ in _preds]),
+            np.stack([_y for _, _y, _ in _preds]),
+            np.stack([_p for _, _, _p in _preds]),
+        )
+        return results, _preds
 
 
 class LinearModel(Model):
@@ -161,7 +175,8 @@ class LinearModel(Model):
         ses = dict(zip(param_names, res.bse))
         cis = dict(zip(param_names, res.conf_int(alpha=1. - self.ci_level)))
         ps = dict(zip(param_names, res.pvalues))
-        return betas, cis, ses, ps, {"rsq": res.rsquared}
+        preds = res.predict(x)
+        return betas, cis, ses, ps, preds, {"rsq": res.rsquared}
 
     
 class NonLinear(Model):
@@ -194,6 +209,7 @@ class NonLinear(Model):
                 p0=init_params,
                 sigma=1. / np.sqrt(weights),
                 absolute_sigma=True,
+                # method="dogbox",
             )
         except RuntimeError:
             betas = {
@@ -214,4 +230,5 @@ class NonLinear(Model):
             k: 2. * tdist.cdf(-abs(b / ses[k]), dof)
             for k, b in betas.items()
         }
-        return betas, cis, ses, ps, {"dof": dof}
+        preds = model_fn(x, *(v for _, v in betas.items()))
+        return betas, cis, ses, ps, preds, {"dof": dof} | {f"{p}_init": v for p, v in zip(param_names, init_params)}

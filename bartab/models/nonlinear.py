@@ -8,8 +8,8 @@ from scipy.special import expit as sigmoid
 
 from .base import NonLinear
 
-def hill_function(log_c, log_ec50, h=1., bottom=0., top=1.):
-    return top - (top - bottom) * sigmoid(h * (log_c - log_ec50))
+def hill_function(log_c, log_ic50, h=1., bottom=0., top=1.):
+    return bottom + (top - bottom) * sigmoid(h * (log_ic50 - log_c))
 
 
 class HillFitnessModel(NonLinear):
@@ -24,10 +24,20 @@ class HillFitnessModel(NonLinear):
     @staticmethod
     def _model_fn(
         X: Iterable[ArrayLike],
-        **kwargs
+        *args
     ):
         x, log_c = X
-        return x * (hill_function(log_c, **kwargs) - 1.)
+        return x * (hill_function(log_c, *args) - 1.)
+
+    @staticmethod
+    def _fitness_transform(results: Mapping[str, float]) -> Dict[str, float]:
+        fn = np.exp
+        param = "log_ic50"
+        return results | {
+            "ic50": fn(results[param]), 
+            "ic50_high": fn(results[f"{param}_ci_high"]),
+            "ic50_low": fn(results[f"{param}_ci_low"]),
+        }
 
     @staticmethod
     def _per_concentration_fitness(y, x, weights, log_c) -> Dict[float, float]:
@@ -47,7 +57,7 @@ class HillFitnessModel(NonLinear):
 
     @staticmethod
     def _init_params(y, x, weights, log_c, fitness_by_conc):
-        if len(fitness_by_conc) < 2:
+        if True: #len(fitness_by_conc) < 2:
             return np.median(log_c), 1.
 
         log_c_observed = sorted(fitness_by_conc)
@@ -83,7 +93,7 @@ class HillFitnessModel(NonLinear):
         **kwargs
     ):
         if param_names is None:
-            param_names = ["log_ec50", "h", "bottom", "top"][:n_params]
+            param_names = ["log_ic50", "h", "bottom", "top"][:n_params]
         zero_mask = concentration == 0.
         if zero_mask.any():
             valid = ~zero_mask

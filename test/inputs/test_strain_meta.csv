@@ -4,3 +4,7 @@ spike,0.0,False,True
 mut_A,1.5,False,False
 mut_B,0.5,False,False
 mut_C,0.9,False,False
+mut_D,1.1,False,False
+ctrl_000,1.0,False,False
+ctrl_001,1.0,False,False
+ctrl_002,1.0,False,False

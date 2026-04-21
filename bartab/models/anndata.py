@@ -61,12 +61,13 @@ class AnnDataModel(Model, ABC):
         else:
             valid = np.ones((adata.X.shape[0],), dtype=bool)
 
-        results = super().fit(
+        results, (x, y, preds) = super().fit(
             Y=adata.layers[Y_key], 
             x=adata.var[X_key].values, 
             valid=valid,
             **kwargs
         )
+        adata.layers[f"{name}:predicted"] = preds
 
         results_with_index = []
         for i, (idx, res) in enumerate(zip(
@@ -115,7 +116,7 @@ class AnnDataOLSModel(AnnDataModel, OLSModel):
         )
 
 
-class AnnDataOLSModel(AnnDataModel, HillFitnessModel):
+class AnnDataHillModel(AnnDataModel, HillFitnessModel):
     def fit(self, adata, *args, concentration: str, weight_kwargs=None, **kwargs):
         return super().fit(
             adata,

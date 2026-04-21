@@ -13,12 +13,9 @@ from . import __version__, appname
 def _fitness(args: Namespace) -> None:
 
     from .io import load_anndata
-    from .models.anndata import AnnDataWLSModel
+    from .models.anndata import AnnDataWLSModel, AnnDataHillModel
     from .transforms import compute_log_ratios
 
-    print_err(
-        f"Loading from {args.inputs}"
-    )
     adata = load_anndata(
         counts=args.inputs,
         sample_meta=args.sample_sheet,
@@ -42,7 +39,8 @@ def _fitness(args: Namespace) -> None:
         use_spike=args.use_spike,
     )
     print_err(adata)
-    if args.concentration_column is not None:
+    if args.concentration_column is None:
+        print_err(f"[INFO] Using a weighted least squares model")
         model = AnnDataWLSModel()
         kwargs = {}
     else:
@@ -50,13 +48,203 @@ def _fitness(args: Namespace) -> None:
             raise ValueError(
                 f"Concentration column '{args.concentration_column}' must be in the --sample-sheet."
             )
+        print_err(
+            "[INFO] Using a Hill non-linear model with "
+            f"'{args.concentration_column}' for concentration."
+        )
         model = AnnDataHillModel()
-        kwargs = {"concentraiton": args.concentration_column}
-    results = model.fit(adata=adata)
+        kwargs = {"concentration": args.concentration_column}
+    results = model.fit(adata=adata, **kwargs)
     print_err(results)
-    results.write_csvs(
-        args.output,
+
+    print_err(f"[INFO] Writing to {args.output}")
+    if args.output.removesuffix(".gz").endswith(".h5ad"):
+        results.write(
+            args.output,
+            compression=(
+                "gzip" if args.output.endswith(".gz") 
+                else None
+            ),
+        )
+        results.obs.to_csv(
+            args.output.removesuffix(".gz").removesuffix(".h5ad") + ".csv",
+        )
+    elif args.output.removesuffix(".gz").endswith((".csv", ".tsv", ".txt")):
+        results.obs.to_csv(
+            args.output,
+            sep=(
+                "," if args.output.removesuffix(".gz").endswith(".csv") 
+                else "\t"
+            ),
+        )
+    return None
+
+
+@clicommand(message="Plotting with the following parameters")
+def _plot(args: Namespace) -> None:
+
+    from anndata.io import read_h5ad
+    from .plotting import (
+        expansion_vs_ratio, 
+        pred_vs_true,
+        time_vs_count, 
+        time_vs_ratio, 
+        volcano
     )
+
+    print_err(
+        f"[INFO] Loading from {args.inputs}"
+    )
+    adata = read_h5ad(args.inputs)
+    fig, axes = time_vs_count(
+        adata,
+        filename=args.output + f"_time-count.{args.plot_format}",
+    )
+    fig, axes = time_vs_ratio(
+        adata,
+        filename=args.output + f"_time-ratio.{args.plot_format}",
+    )
+    fig, axes = expansion_vs_ratio(
+        adata,
+        filename=args.output + f"_expansion-ratio.{args.plot_format}",
+    )
+    fig, axes = pred_vs_true(
+        adata,
+        model_name=args.model_type,
+        filename=args.output + f"_pred-obs.{args.plot_format}",
+    )
+
+    fig, axes = volcano(
+        adata,
+        model_name=args.model_type,
+        param="ic50" if args.model_type == "HillFitnessModel" else "fitness",
+        p="log_ic50_p" if args.model_type == "HillFitnessModel" else "slope_p",
+        filename=args.output + f"_volcano.{args.plot_format}",
+    )
+
+    return None
+
+
+@clicommand(message="Simulating with the following parameters")
+def _simulate(args: Namespace) -> None:
+
+    import json
+
+    import numpy as np
+    import pandas as pd
+    from scipy.special import expit as sigmoid
+
+    from .simulation import calculate_growth_curves, reads_sampler
+
+    rng = np.random.default_rng(args.seed)
+    print_err(
+        f"[INFO] Loading from {args.inputs}"
+    )
+    with open(args.inputs) as f:
+        fitness_input = json.load(f)
+    if args.generate_controls:
+        fitness_input |= {
+            f"ctrl_{i:03d}": [10000., 0.] if args.n_dose else 1.
+            for i in range(args.generate_controls)
+        }
+    if args.generate_more:
+        fitness_input |= {
+            f"str_{i:03d}": [v, 1.] if args.n_dose else v
+            for i, v in enumerate(
+                rng.uniform(0., 1.5, size=args.generate_more)
+            )
+        }
+    if args.n_dose:
+        doses = np.geomspace(
+            args.dose_max / ((args.n_dose - 1) ** args.dose_fold),
+            args.dose_max,
+            num=args.n_dose,
+        )
+        fitness = {
+            dose: {
+                strain: sigmoid(h * (np.log(ic50) - dose))
+                for strain, (ic50, h) in fitness_input.items()
+            } for dose in doses
+        }
+    else:
+        fitness = {1.: fitness_input}
+
+    count_df = []
+    meta_df = []
+    strain_meta_df = []
+    sample_ids = []
+    
+    for dose, _fitness in fitness.items():
+        strains = list(_fitness.keys())
+        t, ref_expansion, growths = calculate_growth_curves(
+            inoculum=args.inoculum, 
+            inoculum_var=.1, 
+            carrying_capacity=args.carrying_capacity, 
+            fitness=_fitness, 
+            n_timepoints=args.timepoints,
+            max_time=args.max_time,
+            seed=args.seed,
+        )
+        assert len(t) == args.timepoints == len(growths[strains[0]]), print_err(len(t), args.timepoints, len(growths[strains[0]]))
+        
+        counts = reads_sampler(
+            growths, 
+            sample_frac=.1, 
+            seq_depth=args.reads_per_barcode, 
+            reps=args.n_cultures, 
+            variance=.001,
+            seed=args.seed,
+        )
+        # print_err(counts.shape)  # strains x reps x time 
+
+        # --- count table: strains × samples ---
+        
+        for strain_name, strain_arr in zip(_fitness, counts):
+            for r, rep_arr in enumerate(strain_arr):
+                for _t, time_arr in zip(t, rep_arr):
+                    replicate_id =  f"dose_{dose:.2f}-rep_{r}"
+                    sample_id = f"{replicate_id}-t_{_t}"
+                    obs_id = f"{sample_id}-strain_{strain_name}"
+                    count_df.append({
+                        "sample_id": sample_id,
+                        "obs_id": obs_id,
+                        "strain_id": strain_name,
+                        "count": time_arr,
+                    })
+                    meta_df.append({
+                        "sample_id": sample_id,
+                        "replicate": replicate_id,
+                        "timepoint": _t,
+                        "dose": dose,
+                        "is_t0": _t == 0.,
+                    })
+                    strain_meta_df.append({
+                        "strain_id": strain_name,
+                    })
+    
+    counts_df = pd.DataFrame(count_df)
+    meta_df = pd.DataFrame(meta_df).drop_duplicates()
+    strain_meta_df = pd.DataFrame(strain_meta_df).drop_duplicates()
+
+    strain_meta_df = strain_meta_df.assign(
+        **{(
+            "dose_params" if args.n_dose else "true_fitness"
+            ): lambda x: x["strain_id"].map(fitness_input)
+        },
+        is_reference=lambda x: x["strain_id"] == "wt",
+        is_spike=lambda x: x["strain_id"] == "spike",
+    )
+
+    counts_df.to_csv(f"{args.output}_count.csv", index=False)
+    meta_df.to_csv(f"{args.output}_sample_meta.csv", index=False)
+    strain_meta_df.to_csv(f"{args.output}_strain_meta.csv", index=False)
+
+    print_err("\nCounts:")
+    print_err(counts_df)
+    print_err("\nSample metadata:")
+    print_err(meta_df)
+    print_err("\nStrain metadata (ground truth):")
+    print_err(strain_meta_df)
     return None
 
 
@@ -151,6 +339,12 @@ def main() -> None:
         default=None,
         help='Column of conditions table corresponding to concentration.',
     )
+    model_type = CLIOption(
+        '--model-type',
+        default="WLS",
+        choices=["WLS", "OLS", "HillFitnessModel"],
+        help='What model type to use.',
+    )
     volume_column = CLIOption(
         '--volume-column', 
         type=str,
@@ -217,6 +411,81 @@ def main() -> None:
         choices=["png", "PNG", "pdf", "PDF"],
         help='File format for plots.',
     )
+
+    ### FOR SIMULATIONS
+    generate_controls = CLIOption(
+        '--generate-controls', '-z',
+        type=int,
+        default=0,
+        help="Number of control strains (rel. fitness = 1) to generate.",
+    )
+    generate_more = CLIOption(
+        '--generate-more', '-m',
+        type=int,
+        default=0,
+        help="Number of additional strains with random fitness to generate.",
+    )
+    inoculum = CLIOption(
+        '--inoculum', '-n',
+        type=int,
+        default=1000,
+        help="Number of cells per strain in inoculum.",
+    )
+    carrying_capacity = CLIOption(
+        '--carrying-capacity', '-K',
+        type=float,
+        default=10.,
+        help="Maximum fold-change in cell count to support.",
+    )
+    n_timepoints = CLIOption(
+        '--timepoints', '-s',
+        type=int,
+        default=10,
+        help="Number of timepoints to sample.",
+    )
+    max_time = CLIOption(
+        '--max-time', '-t',
+        type=int,
+        default=10,
+        help="Final timepoint to sample.",
+    )
+    n_cultures = CLIOption(
+        '--n-cultures', '-r',
+        type=int,
+        default=3,
+        help="Number of cultures (biological replicates) to generate.",
+    )
+    seq_depth = CLIOption(
+        '--reads-per-barcode', '-b',
+        type=int,
+        default=1_000,
+        help="Mean sequencing depth per barcode per sample.",
+    )
+    _seed = CLIOption(
+        '--seed', '-e',
+        type=int,
+        default=42,
+        help="Seed for reproducible randomness.",
+    )
+    n_doses = CLIOption(
+        '--n-dose', '-d',
+        type=int,
+        default=None,
+        help="Number of doses for inducer dose response, using values in `input` as IC50s. "
+        "Default: don't generate dose response.",
+    )
+    dose_max = CLIOption(
+        '--dose-max',
+        type=int,
+        default=1000,
+        help="Maximum dose for inducer dose response.",
+    )
+    dose_fold = CLIOption(
+        '--dose-fold',
+        type=int,
+        default=2,
+        help="Fold dilution for inducer dose response.",
+    )
     
     fitness = CLICommand(
         "fit", 
@@ -240,18 +509,56 @@ def main() -> None:
             volume_column,
             use_spike,
             concentration_column,
+            model_type,
             pseudocount,
             plots,
             plot_format,
             formatting,
         ],
     )
+
+    plotting = CLICommand(
+        "plot", 
+        description="Plot modelling results.",
+        main=_plot,
+        options=[
+            inputs_named,
+            outputs_named,
+            model_type,
+            plot_format,
+        ],
+    )
+
+    simulate = CLICommand(
+        "sim", 
+        description="Simulate read counts from a pooled competition experiment.",
+        main=_simulate,
+        options=[
+            inputs_named,
+            outputs_named,
+            generate_controls,
+            generate_more,
+            inoculum,
+            carrying_capacity,
+            n_timepoints,
+            max_time,
+            n_doses,
+            dose_max,
+            dose_fold,
+            n_cultures,
+            seq_depth,
+            _seed,
+        ],
+    )
+
     app = CLIApp(
         name=appname,
         version=__version__,
         description="Analysis of barcoded, pooled functional genomics assays.",
         commands=[
             fitness,
+            plotting,
+            simulate,
         ]
     )
     app.run()

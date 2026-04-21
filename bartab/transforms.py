@@ -63,8 +63,7 @@ def compute_log_ratios(
         t0_idx = c_idx & t0_mask
         if t0_idx.sum() == 0:
             raise ValueError(f"No t0 sample found for culture '{culture}'")
-        baseline = log_ratio_to_ref[:, t0_idx].mean(axis=1, keepdims=True)
-        log_ratio[:, c_idx] -= baseline
+        log_ratio[:, c_idx] -= log_ratio_to_ref[:, t0_idx].mean(axis=1, keepdims=True)
 
     adata.layers[key] = log_ratio
 
@@ -73,13 +72,7 @@ def compute_log_ratios(
         n_spikes = spike_mask.sum()
         if n_spikes != 1:
             raise ValueError(f"Expected exactly 1 spike strain, found {n_spikes}")
-    
-        log_spike_to_ref = log_X[spike_mask, :] - log_ref  # (1, n_samples,)
-        expansion = log_spike_to_ref.copy()        # (1, n_samples,)
-        for culture, _, c_idx in _anndata_groupby(adata, "__culture_index__"):
-            t0_idx = c_idx & t0_mask
-            baseline = log_spike_to_ref[:, t0_idx].mean()
-            expansion[:, c_idx] -= baseline
+        expansion = log_ratio.copy()[spike_mask, :]
 
         # volume correction for adaptive-volume sampling
         if volume_column is not None:
@@ -89,7 +82,7 @@ def compute_log_ratios(
             for culture, _, c_idx in _anndata_groupby(adata, "__culture_index__"):
                 t0_idx = c_idx & t0_mask
                 vol_t0_mean = vols[t0_idx].mean()
-                expansion[:, c_idx] += (np.log(vol_t0_mean) -np.log(vols[c_idx]))[None, :]
+                expansion[:, c_idx] += (np.log(vol_t0_mean) - np.log(vols[c_idx]))[None, :]
 
     elif growth_column is not None:
         if growth_column not in adata.var.columns:
@@ -117,5 +110,4 @@ def compute_log_ratios(
         )
 
     adata.var["__log_expansion__"] = expansion.squeeze(axis=0)
-
     return adata

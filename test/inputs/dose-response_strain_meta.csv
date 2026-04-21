@@ -1,0 +1,10 @@
+strain_id,dose_params,is_reference,is_spike
+wt,"[10000.0, 0.0]",True,False
+spike,"[1e-09, 100.0]",False,True
+mut_A,"[1.5, 1.0]",False,False
+mut_B,"[1.5, 2.0]",False,False
+mut_C,"[10.0, 1.0]",False,False
+mut_D,"[10.0, 0.5]",False,False
+ctrl_000,"[10000.0, 0.0]",False,False
+ctrl_001,"[10000.0, 0.0]",False,False
+ctrl_002,"[10000.0, 0.0]",False,False
