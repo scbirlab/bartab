@@ -5,7 +5,7 @@ set -euox pipefail
 N_CONTROLS=30
 N_MORE=1000
 TIME=5
-TIMEPOINTS=10
+TIMEPOINTS=6
 INOCULUM=1000
 K=10
 N=3
@@ -36,6 +36,6 @@ bartab sim \
     --n-cultures "$N" \
     --reads-per-barcode "$SEQ_DEPTH" \
     --n-dose 10 \
-    --dose-max 50 \
+    --dose-max 10 \
     --dose-fold 2 \
     --output "test/inputs/dose-response"

@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 else:
     AnnData = Any
 
+from carabiner import print_err
 import numpy as np
 
 
@@ -72,6 +73,7 @@ def compute_log_ratios(
         n_spikes = spike_mask.sum()
         if n_spikes != 1:
             raise ValueError(f"Expected exactly 1 spike strain, found {n_spikes}")
+        print_err(f"[INFO] Calculating culture expansion using spike-in")
         expansion = log_ratio.copy()[spike_mask, :]
 
         # volume correction for adaptive-volume sampling
@@ -87,7 +89,7 @@ def compute_log_ratios(
     elif growth_column is not None:
         if growth_column not in adata.var.columns:
             raise ValueError(f"Column '{growth_column=}' not in sample metadata.")
-
+        print_err(f"[INFO] Calculating culture expansion using {growth_column=}")
         growth = adata.var[growth_column].values
         if (growth <= 0).any():
             raise ValueError(
@@ -103,6 +105,7 @@ def compute_log_ratios(
                 expansion[:, c_idx] = np.log(growth[c_idx]) - np.log(growth_t0_mean)
             else:
                 expansion[:, c_idx] = growth * np.log(2.)
+        expansion = -expansion
     else:
         raise ValueError(
             "No expansion axis available: set use_spike=True with a spike strain, "

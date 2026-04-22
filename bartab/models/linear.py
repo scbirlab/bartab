@@ -12,7 +12,25 @@ def _delta_method_weights(
     control_mask: ArrayLike,    # (n_strains,)
     dispersion: ArrayLike,  # (n_strains,) per-strain alpha
 ) -> np.ndarray:
-    """Var(log c_i - log c_wt) ≈ 1/c_i + α_i + 1/c_wt + α_wt → weights = 1/Var."""
+    """
+    
+    Var(log c_i - log c_wt) ≈ 1/c_i + α_i + 1/c_wt + α_wt → weights = 1/Var.
+    
+    Examples
+    ========
+    >>> import numpy as np; np.set_printoptions(legacy='1.25')
+    >>> from bartab.models.linear import _delta_method_weights
+    >>> raw = np.array([[500., 1_000., 2_000.],   # reference (wt)
+    ...                 [100.,   150.,   200.]])   # mutant
+    >>> control_mask = np.array([True, False])
+    >>> dispersion = np.array([0.01, 0.05])
+    >>> weights = _delta_method_weights(raw, control_mask, dispersion)
+    >>> weights.shape  # (n_strains, n_samples)
+    (2, 3)
+    >>> (weights > 0).all()
+    True
+    
+    """
     ref_counts = raw[control_mask, :].squeeze(axis=0)   # (n_samples,)
     ref_disp = dispersion[control_mask].squeeze()    # scalar
     var_y = (
@@ -30,6 +48,21 @@ def _estimate_dispersion_mom(
     
     Fallback when PyDESeq2 is unavailable or pool is too small.
     α̂ = (σ²/μ² - 1/μ)  clipped to [0, ∞)
+
+    Examples
+    ========
+    >>> import numpy as np; np.set_printoptions(legacy='1.25')
+    >>> from bartab.models.linear import _estimate_dispersion_mom
+    >>> raw = np.array([[100., 200., 100.],   # high variance
+    ...                 [100., 100., 100.]])  # zero variance
+    >>> disp = _estimate_dispersion_mom(raw)
+    >>> disp.shape
+    (2,)
+    >>> disp[1]  # constant counts → no extra-Poisson dispersion
+    0.0
+    >>> disp[0] > 0  # noisy counts → positive dispersion
+    True
+
     """
     dispersions = []
     if groups is None:
@@ -111,7 +144,25 @@ class WLSModel(LinearModel):
 
 
 class OLSModel(WLSModel):
-    """Unweighted baseline for benchmarking."""
+    """Unweighted baseline for benchmarking.
+    
+    Examples
+    ========
+    >>> import numpy as np; np.set_printoptions(legacy='1.25')
+    >>> from bartab.models.linear import OLSModel
+    >>> model = OLSModel()
+    >>> Y = np.array([[0.0, -0.5, -1.0],   # declining strain
+    ...               [0.0,  0.0,  0.0]])  # neutral strain
+    >>> x = np.array([0., 1., 2.])
+    >>> results, _ = model.fit(Y, x)
+    >>> len(results)
+    2
+    >>> results[0]["fitness"]  # slope=-0.5 → fitness = 1-(-0.5) = 1.5
+    1.5
+    >>> results[1]["fitness"]  # slope=0 → fitness = 1.0
+    1.0
+    
+    """
 
     _name: str = "OLS"
 

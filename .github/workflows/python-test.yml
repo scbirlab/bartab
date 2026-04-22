@@ -43,9 +43,12 @@ jobs:
     - name: Test CLI - Simulation
       run: |
         bash test/scripts/generate-tables.sh
-    - name: Test CLI - WLS
+    - name: Test CLI - WLS spike
       run: |
-        bash test/test.sh
+        bash test/test-spike.sh
+    - name: Test CLI - WLS growth
+      run: |
+        bash test/test-growth.sh
     - name: Test CLI - Dose response
       run: |
         bash test/test-dose.sh

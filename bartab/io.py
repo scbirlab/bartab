@@ -165,6 +165,7 @@ def load_anndata(
             "strain_id": strain_id,
             "culture_id": culture_id,
             "sample_id": sample_id,
+            "models_fitted": [],
         }
     )
     return adata

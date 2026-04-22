@@ -1,9 +1,9 @@
 """Plotting functions."""
 
-from typing import Callable
+from typing import Callable, Iterable, Optional
 import os
 
-from carabiner.mpl import set_plot_palette, grid, figsaver, scattergrid
+from carabiner.mpl import add_legend, set_plot_palette, grid, figsaver, scattergrid
 import numpy as np
 import pandas as pd
 
@@ -34,7 +34,7 @@ def scatter(
 ):
     defaults = {
         "facecolor": "none",
-        "edgecolor": "C0",
+        "edgecolor": "lightgrey",
         "linewidth": .5,
         "s": 10.,
         "label": "_none",
@@ -56,17 +56,31 @@ def scatter(
         ylabel=ylabel or x,
         **kwargs,
     )
+    if "label" in scatter_opts:
+        add_legend(ax)
     return ax
 
+
+def _avoid_color_collision(i, avoid=None):
+    if avoid is None:
+        avoid = []
+    if i in avoid:
+        return _avoid_color_collision(i + 1, avoid)
+    else:
+        return i
 
 def volcano(
     adata,
     model_name,
     param: str = "fitness",
     p: str = "slope_p",
-    filename: str = None
+    control_prefix="ctrl_",
+    spike_color: str = "C1",
+    highlight_barcodes: Optional[Iterable[str]] = None,
+    filename: str = None,
+    **kwargs,
 ):
-    fig, ax = grid()
+    fig, ax = grid(aspect_ratio=1.35)
     df = adata.obs
     x = f"{model_name}:{param}"
     y = f"{model_name}:{p}"
@@ -80,17 +94,13 @@ def volcano(
         ax=ax,
         x=x,
         y=y,
-        data=df.query("strain_id.str.startswith('ctrl_')"),
+        data=df.query("strain_id.str.startswith(@control_prefix)"),
         scatter_opts={
-            "facecolor": "lightgrey",
+            "facecolor": "dimgrey",
             "edgecolor": "none",
+            "s": 15.,
+            "label": "Control",
         },
-        vline=1.,
-        hline=.05,
-        xlabel="Relative fitness",
-        ylabel="P",
-        # xscale="log",
-        # yscale="log",
     )
     ax = scatter(
         ax=ax,
@@ -98,16 +108,41 @@ def volcano(
         y=y,
         data=df.query("__is_spike__"),
         scatter_opts={
-            "facecolor": "lightgrey",
+            "facecolor": spike_color,
             "edgecolor": "none",
+            "s": 15.,
+            "label": "Spike",
         },
-        vline=1.,
         hline=.05,
         xlabel=f"Parameter: {param}",
         ylabel=f"P: {p}",
         # xscale="log",
-        # yscale="log",
+        yscale="log",
+        **kwargs,
     )
+    if highlight_barcodes is None:
+        highlight_barcodes = []
+    for i, (idx, bc_df) in enumerate(df.query("__row_index__.isin(@highlight_barcodes)").groupby("__row_index__")):
+        color = f"C{_avoid_color_collision(i + 2, [int(spike_color[1:]), 7, 8])}"
+        ax = scatter(
+            ax=ax,
+            x=x,
+            y=y,
+            data=bc_df,
+            scatter_opts={
+                "facecolor": "none",
+                "edgecolor": color,
+                "s": 5.,
+                "linewidth": 1.,
+                "label": idx,
+            },
+            hline=.05,
+            xlabel=f"Parameter: {param}",
+            ylabel=f"P: {p}",
+            # xscale="log",
+            yscale="log",
+            **kwargs,
+        )
     if filename is not None:
         save_plot(fig, filename, df=df[[x, y]].reset_index())
     return fig, ax
@@ -124,15 +159,19 @@ def _layered_scatter_barcodes(
     control_prefix="ctrl_",
     color_by_barcode: bool = False,
     default_color: str = "lightgrey",
+    spike_color: str = "C1",
+    highlight_barcodes: Optional[Iterable[str]] = None,
     exp_x: bool = False, 
     exp_y: bool = False,
     callback=None,
     **kwargs
 ):
+    if highlight_barcodes is None:
+        highlight_barcodes = []
     set_plot_palette("vibrant")
     if palette is not None:
         set_plot_palette(palette)
-    fig, ax = grid()
+    fig, ax = grid(aspect_ratio=1.35)
 
     dfs = []
     if x_obs is not None:
@@ -153,6 +192,7 @@ def _layered_scatter_barcodes(
     # print(_x.shape, Y.shape)
     X = X[None] if X.ndim < Y.ndim else X
     X = np.broadcast_to(X, Y.shape).copy()
+    control_plotted, spike_plotted = False, False
     for i, (_x, _y, idx) in enumerate(zip(
         X,
         Y, 
@@ -164,18 +204,33 @@ def _layered_scatter_barcodes(
                 "edgecolor": "none",
                 "zorder": 3,
                 "s": 15.,
+                "label": "Controls" if not control_plotted else "_none",
             }
+            control_plotted = True
         elif adata.obs.loc[idx][spike_label]:
             scatter_opts = {
-                "facecolor": "C1",
+                "facecolor": spike_color,
                 "edgecolor": "none",
                 "zorder": 10,
                 "s": 15.,
+                "label": "Spike" if not spike_plotted else "_none",
+            }
+            spike_plotted = True
+        elif idx in highlight_barcodes:
+            color = f"C{_avoid_color_collision(i + 2, [int(spike_color[1:]), 7, 8])}"
+            scatter_opts = {
+                "edgecolor": color,
+                "facecolor": "none",
+                "zorder": 10,
+                "s": 5.,
+                "linewidth": 1.,
+                "label": idx,
             }
         else:
             scatter_opts = {
                 "edgecolor": f"C{i}" if color_by_barcode else default_color,
                 "s": 5.,
+                "label": "_none",
             }
         this_df = pd.DataFrame({
             x_col: np.exp(_x) if exp_x else _x, 
@@ -284,5 +339,95 @@ def time_vs_count(
         yscale="log",
         **kwargs,
     )
+    return fig, ax
+
+
+def dose_response(
+    adata,
+    model_name: str,
+    filename: str = None,
+    control_prefix: str = "ctrl_",
+    highlight_barcodes: Optional[Iterable[str]] = None,
+    **kwargs
+):
+    if highlight_barcodes is None:
+        highlight_barcodes = []
+    prefix = f"{model_name}:fitness"
+    fitnesses = [col for col in adata.obs.columns if col.startswith(prefix)]
+    concs = set([float(col.split("@")[-1]) for col in fitnesses])
+    fitness_df = (
+        adata.obs
+        [fitnesses]
+        .reset_index()
+        .melt(
+            id_vars="__row_index__",
+            var_name="_param_name",
+            value_name="param_value",
+        )
+        .assign(
+            param_name=lambda x: x["_param_name"].str.split(f"{model_name}:").str[1].str.split("@").str[0],
+            _concentration=lambda x: x["_param_name"].str.split("@").str[-1].astype(float),
+        )
+        .pivot(
+            index=["__row_index__", "_concentration"],
+            columns="param_name",
+            values="param_value",
+        )
+        .reset_index()
+    )
+    fig, ax = grid(aspect_ratio=1.35)
+    control_plotted, spike_plotted = False, False
+    for i, (barcode_name, bc_df) in enumerate(
+        fitness_df
+        .sort_values("_concentration")
+        .groupby("__row_index__")
+    ):
+        if barcode_name == adata.uns["spike"]:
+            line_args = {
+                "color": "C1",
+                "linewidth": 1.,
+                "label": "Spike" if not spike_plotted else "_none",
+                "zorder": 10,
+            }
+            spike_plotted = True
+        elif barcode_name.startswith(control_prefix):
+            line_args = {
+                "color": "dimgrey",
+                "linewidth": 1.,
+                "label": "Controls" if not control_plotted else "_none",
+                "zorder": 3,
+            }
+            control_plotted = True
+        elif barcode_name in highlight_barcodes:
+            color = f"C{_avoid_color_collision(i + 2, [1, 7, 8])}"
+            line_args = {
+                "color": color,
+                "linewidth": 1.,
+                "label": barcode_name,
+                "zorder": 10,
+            }
+        else:
+            line_args = {
+                "color": "lightgrey",
+                "alpha": .4,
+                "linewidth": .5,
+                "label": "_none",
+                "zorder": 0,
+            }
+        # print(bc_df)
+        ax.plot(
+            "_concentration",
+            "fitness",
+            data=bc_df,
+            **line_args,
+        )
+    ax.set(
+        xlabel="Concentration",
+        ylabel="Fitness",
+        xscale="log",
+    )
+    add_legend(ax)
+    if filename is not None:
+        save_plot(fig, filename, df=fitness_df)
     return fig, ax
 

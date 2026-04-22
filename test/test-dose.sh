@@ -21,6 +21,7 @@ bartab fit \
 bartab plot \
     "test/outputs/dose-response-results.h5ad" \
     --model-type "HillFitnessModel" \
+    --highlight mut_A mut_B mut_C mut_D \
     -o test/outputs/dose-response-plot
 
 >&2 echo "[$(date)] Done!"

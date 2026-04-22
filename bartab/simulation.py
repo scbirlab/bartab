@@ -66,10 +66,29 @@ def calculate_growth_curves(
     ref_key: str = "wt",
     seed: int = 42
 ) -> Tuple[np.ndarray, ...]:
+    """
+    Examples
+    ========
+    >>> from bartab.simulation import calculate_growth_curves
+    >>> t, expansion, growths = calculate_growth_curves(
+    ...     inoculum=1_000,
+    ...     fitness={"wt": 1., "mut": .5},
+    ...     n_timepoints=3,
+    ...     max_time=5.,
+    ...     seed=42,
+    ... )
+    >>> t.shape
+    (3,)
+    >>> sorted(growths.keys())
+    ['mut', 'wt']
+    >>> growths["wt"].shape  # one value per timepoint  # doctest: +SKIP
+    (3,)
+
+    """
     from scipy.stats import nbinom
 
     if carrying_capacity is not None and isinstance(carrying_capacity, (int, float)):
-        carrying_capacity *= inoculum
+        carrying_capacity *= inoculum * len(fitness)
 
     n, p = _nb_np_from_mean_var(inoculum, inoculum_var)
     w = np.asarray([v for _, v in fitness.items()])
@@ -124,6 +143,24 @@ def reads_sampler(
     variance: float = .1,
     seed: int = 42
 ) -> np.ndarray:
+    """Simulate sampling sequencing reaad counts from a pooled growth curve.
+
+    Examples
+    ========
+    >>> import numpy as np; np.set_printoptions(legacy='1.25')
+    >>> from bartab.simulation import reads_sampler
+    >>> population = {
+    ...     "wt":  np.array([1_000, 2_718, 7_389]),
+    ...     "mut": np.array([  500,   800, 1_200]),
+    ... }
+    >>> counts = reads_sampler(population, seq_depth=100, reps=2, seed=42)
+    >>> counts.shape  # (n_strains, reps, n_timepoints)
+    (2, 2, 3)
+    >>> (counts >= 0).all()
+    True
+
+    """
+
     from scipy.stats import multivariate_hypergeom, nbinom
 
     samples = []

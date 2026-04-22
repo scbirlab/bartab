@@ -89,6 +89,7 @@ class AnnDataModel(Model, ABC):
             validate="one_to_one",
             left_index=True, right_index=True
         )
+        adata.uns["models_fitted"].append(name)
         return adata
 
 

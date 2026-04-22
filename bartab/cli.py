@@ -86,6 +86,7 @@ def _plot(args: Namespace) -> None:
 
     from anndata.io import read_h5ad
     from .plotting import (
+        dose_response, 
         expansion_vs_ratio, 
         pred_vs_true,
         time_vs_count, 
@@ -97,32 +98,45 @@ def _plot(args: Namespace) -> None:
         f"[INFO] Loading from {args.inputs}"
     )
     adata = read_h5ad(args.inputs)
+    if args.model_type == "HillFitnessModel":
+        fig, axes = dose_response(
+            adata,
+            highlight_barcodes=args.highlight,
+            model_name="WLS",
+            filename=args.output + f"_dr.{args.plot_format}",
+        )
     fig, axes = time_vs_count(
         adata,
+        highlight_barcodes=args.highlight,
         filename=args.output + f"_time-count.{args.plot_format}",
     )
     fig, axes = time_vs_ratio(
         adata,
+        highlight_barcodes=args.highlight,
         filename=args.output + f"_time-ratio.{args.plot_format}",
     )
     fig, axes = expansion_vs_ratio(
         adata,
+        highlight_barcodes=args.highlight,
         filename=args.output + f"_expansion-ratio.{args.plot_format}",
     )
     fig, axes = pred_vs_true(
         adata,
+        highlight_barcodes=args.highlight,
         model_name=args.model_type,
         filename=args.output + f"_pred-obs.{args.plot_format}",
     )
 
     fig, axes = volcano(
         adata,
+        highlight_barcodes=args.highlight,
         model_name=args.model_type,
         param="ic50" if args.model_type == "HillFitnessModel" else "fitness",
+        xscale="log" if args.model_type == "HillFitnessModel" else "linear",
+        vline=None if args.model_type == "HillFitnessModel" else 1.,
         p="log_ic50_p" if args.model_type == "HillFitnessModel" else "slope_p",
         filename=args.output + f"_volcano.{args.plot_format}",
     )
-
     return None
 
 
@@ -175,7 +189,7 @@ def _simulate(args: Namespace) -> None:
     strain_meta_df = []
     sample_ids = []
     
-    for dose, _fitness in fitness.items():
+    for i, (dose, _fitness) in enumerate(fitness.items()):
         strains = list(_fitness.keys())
         t, ref_expansion, growths = calculate_growth_curves(
             inoculum=args.inoculum, 
@@ -199,12 +213,12 @@ def _simulate(args: Namespace) -> None:
         # print_err(counts.shape)  # strains x reps x time 
 
         # --- count table: strains × samples ---
-        
+        growth_t0 = sum(v[0] for _, v in growths.items())
         for strain_name, strain_arr in zip(_fitness, counts):
             for r, rep_arr in enumerate(strain_arr):
-                for _t, time_arr in zip(t, rep_arr):
-                    replicate_id =  f"dose_{dose:.2f}-rep_{r}"
-                    sample_id = f"{replicate_id}-t_{_t}"
+                for j, (_t, time_arr) in enumerate(zip(t, rep_arr)):
+                    replicate_id =  f"dose_{i}-rep_{r}"
+                    sample_id = f"{replicate_id}-t_{j}"
                     obs_id = f"{sample_id}-strain_{strain_name}"
                     count_df.append({
                         "sample_id": sample_id,
@@ -212,11 +226,14 @@ def _simulate(args: Namespace) -> None:
                         "strain_id": strain_name,
                         "count": time_arr,
                     })
+                    this_sample_growth = sum(v[j] for _, v in growths.items())
                     meta_df.append({
                         "sample_id": sample_id,
                         "replicate": replicate_id,
                         "timepoint": _t,
                         "dose": dose,
+                        "growth": this_sample_growth,
+                        "generations": np.log(this_sample_growth / growth_t0) / np.log(2.),
                         "is_t0": _t == 0.,
                     })
                     strain_meta_df.append({
@@ -314,6 +331,13 @@ def main() -> None:
         type=str,
         default="strain_name",
         help='Column of count table corresponding to barcode/guide/strain names.',
+    )
+    highlight_barcodes = CLIOption(
+        '--highlight', '-X',
+        type=str,
+        default=None,
+        nargs="*",
+        help='Names of barcode/guide/strains to highlight in plots.',
     )
     culture_column = CLIOption(
         '--culture-column',
@@ -525,6 +549,7 @@ def main() -> None:
         options=[
             inputs_named,
             outputs_named,
+            highlight_barcodes,
             model_type,
             plot_format,
         ],
