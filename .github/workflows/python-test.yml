@@ -40,6 +40,12 @@ jobs:
         pytest bartab --doctest-modules
         # run other tests
         #pytest test/test_evaluation.py
-    - name: Test CLI
+    - name: Test CLI - Simulation
+      run: |
+        bash test/scripts/generate-tables.sh
+    - name: Test CLI - WLS
       run: |
         bash test/test.sh
+    - name: Test CLI - Dose response
+      run: |
+        bash test/test-dose.sh
