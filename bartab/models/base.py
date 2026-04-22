@@ -21,10 +21,6 @@ class Model(ABC):
     def _fit(self, y: ArrayLike, x: ArrayLike, weights: ArrayLike, param_names: Iterable[str], **kwargs):
         ...
 
-    # @abstractmethod
-    # def predict(self, x: ArrayLike, params: ArrayLike, **kwargs):
-    #     ...
-
     @staticmethod
     def _fitness_transform(results: Mapping[str, float], **kwargs):
         return results

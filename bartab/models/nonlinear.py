@@ -88,7 +88,7 @@ class HillFitnessModel(NonLinear):
         init_params: Optional[ArrayLike] = None, 
         param_names: Optional[Iterable[str]] = None,
         model_fn: Optional[Callable] = None,
-        model_kwargs: Optional[Mapping[str, ...]] = None,
+        model_kwargs: Optional[Mapping[str, Any]] = None,
         n_params: int = 2,
         **kwargs
     ):
