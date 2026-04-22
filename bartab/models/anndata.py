@@ -93,10 +93,11 @@ class AnnDataModel(Model, ABC):
 
 
 class AnnDataWLSModel(AnnDataModel, WLSModel):
-    def fit(self, adata, *args, weight_kwargs=None, **kwargs):
+    def fit(self, adata, *args, weight_kwargs=None, concentration_key: str = "__inducer__", **kwargs):
         return super().fit(
             adata,
             *args,
+            groups=adata.var[concentration_key].values if adata.uns["concentration_column"] else None,
             weight_kwargs={
                 "raw": adata.X,
                 "control_mask": adata.obs["__is_reference__"].values,
@@ -107,21 +108,23 @@ class AnnDataWLSModel(AnnDataModel, WLSModel):
 
 
 class AnnDataOLSModel(AnnDataModel, OLSModel):
-    def fit(self, adata, *args, weights=None, **kwargs):
+    def fit(self, adata, *args, weights=None, concentration_key: str = "__inducer__", **kwargs):
         return super().fit(
             adata,
             *args,
+            groups=adata.var[concentration_key].values if adata.uns["concentration_column"] else None,
             weights=None,
             **kwargs,
         )
 
 
 class AnnDataHillModel(AnnDataModel, HillFitnessModel):
-    def fit(self, adata, *args, concentration: str, weight_kwargs=None, **kwargs):
+    def fit(self, adata, *args, concentration: str, weight_kwargs=None, concentration_key: str = "__inducer__", **kwargs):
+        print(adata.var[concentration_key].values)
         return super().fit(
             adata,
             *args,
-            concentration=adata.var[concentration].values,
+            concentration=adata.var[concentration_key].values,
             weight_kwargs={
                 "raw": adata.X,
                 "control_mask": adata.obs["__is_reference__"].values,

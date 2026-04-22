@@ -8,15 +8,15 @@ from scipy.special import expit as sigmoid
 
 from .base import NonLinear
 
-def hill_function(log_c, log_ic50, h=1., bottom=0., top=1.):
+def hill_function(log_c, log_ic50, bottom=0., h=1., top=1.):
     return bottom + (top - bottom) * sigmoid(h * (log_ic50 - log_c))
 
 
 class HillFitnessModel(NonLinear):
     """2-parameter Hill / log-logistic with bottom fixed at 0.
     
-    Parameters: log10(EC50) [location] and H [slope], fit on log10 concentration.
-    Fitness = 1 - σ(H · log10(c/EC50))
+    Parameters: log(EC50) [location] and H [slope], fit on log concentration.
+    Fitness = 1 - σ(H · log(c/EC50))
     """
 
     _name: str = "HillFitnessModel"
@@ -27,7 +27,7 @@ class HillFitnessModel(NonLinear):
         *args
     ):
         x, log_c = X
-        return x * (hill_function(log_c, *args) - 1.)
+        return x * (1. - hill_function(log_c, *args))
 
     @staticmethod
     def _fitness_transform(results: Mapping[str, float]) -> Dict[str, float]:
@@ -57,7 +57,7 @@ class HillFitnessModel(NonLinear):
 
     @staticmethod
     def _init_params(y, x, weights, log_c, fitness_by_conc):
-        if True: #len(fitness_by_conc) < 2:
+        if len(fitness_by_conc) < 2:
             return np.median(log_c), 1.
 
         log_c_observed = sorted(fitness_by_conc)
@@ -86,21 +86,21 @@ class HillFitnessModel(NonLinear):
         concentration: ArrayLike,
         weights: ArrayLike,
         init_params: Optional[ArrayLike] = None, 
-        param_names: Optional[Iterable[str]] = None, 
+        param_names: Optional[Iterable[str]] = None,
         model_fn: Optional[Callable] = None,
         model_kwargs: Optional[Mapping[str, ...]] = None,
         n_params: int = 2,
         **kwargs
     ):
         if param_names is None:
-            param_names = ["log_ic50", "h", "bottom", "top"][:n_params]
+            param_names = ["log_ic50", "bottom", "h", "top"][:n_params]
         zero_mask = concentration == 0.
         if zero_mask.any():
             valid = ~zero_mask
             y, x, weights, concentration = (
                 arr[valid] for arr in (y, x, weights, concentration)
             )
-        log_c = np.log10(concentration)
+        log_c = np.log(concentration)
         if init_params is None:
             fitness_by_conc = self._per_concentration_fitness(y, x, weights, log_c)
             init_params = self._init_params(y, x, weights, log_c, fitness_by_conc)[:n_params]
@@ -114,6 +114,6 @@ class HillFitnessModel(NonLinear):
             model_fn=partial(model_fn, **model_kwargs),
             init_params=init_params, 
             weights=weights, 
-            param_names=param_names, 
+            param_names=param_names,
             **kwargs
         )

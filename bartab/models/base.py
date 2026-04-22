@@ -95,7 +95,8 @@ class Model(ABC):
         x: ArrayLike, 
         valid: Optional[ArrayLike] = None, 
         weights: Optional[ArrayLike] = None, 
-        param_names: Optional[str] = None, 
+        param_names: Optional[str] = None,
+        groups: Optional[ArrayLike] = None,
         min_obs: int = 3,
         weight_kwargs: Optional[Mapping[str, Any]] = None,
         **kwargs
@@ -105,6 +106,10 @@ class Model(ABC):
             valid = np.ones(Y.shape[0], dtype=bool)
         finite_X = np.isfinite(x)
         finite_Y = np.isfinite(Y)
+
+        if groups is not None:
+            unique_groups = sorted(set(groups))
+
         results = []
         base_result = {"fit_status": "fail"}
         if weight_kwargs is None:
@@ -121,7 +126,7 @@ class Model(ABC):
             Y,
             finite_Y,
             weights,
-            valid
+            valid,
         )):
             this_base_result = base_result | {"i": i}
             this_valid = _valid & finite_y & finite_X
@@ -131,17 +136,34 @@ class Model(ABC):
             if this_valid.sum() < min_obs:
                 results.append(this_base_result)
                 continue
-
-            result, (x, y, preds) = self.fit_obs(
-                y, 
-                x, 
-                valid=this_valid, 
-                weights=w, 
-                param_names=param_names,
-                **kwargs,
-            )
+            if groups is None:
+                result, preds = self.fit_obs(
+                    y, 
+                    x, 
+                    valid=this_valid, 
+                    weights=w, 
+                    param_names=param_names,
+                    **kwargs,
+                )
+            else:
+                result = {}
+                preds = (np.empty_like(x), np.empty_like(y), np.empty_like(y))
+                for _group in unique_groups:
+                    group_mask = groups == _group
+                    _x, _y = x[group_mask], y[group_mask]
+                    _result, _preds_new = self.fit_obs(
+                        _y,
+                        _x,
+                        valid=this_valid[group_mask],
+                        weights=w, 
+                        param_names=param_names,
+                        **kwargs,
+                    )
+                    result |= {f"{key}@{_group}": v for key, v in _result.items()}
+                    for _p, new_pred in zip(preds, _preds_new):
+                        _p[group_mask] = new_pred
             results.append(this_base_result | result | {"fit_status": "ok"})
-            _preds.append((x, y, preds))
+            _preds.append(preds)
         _preds = (
             np.concatenate([_x for _x, *_ in _preds]),
             np.stack([_y for _, _y, _ in _preds]),
@@ -212,9 +234,7 @@ class NonLinear(Model):
                 # method="dogbox",
             )
         except RuntimeError:
-            betas = {
-                k: np.nan for k in param_names
-            }
+            betas = np.full(len(param_names), np.nan)
             pcov = np.full(
                 (len(param_names), len(param_names)), 
                 np.nan,

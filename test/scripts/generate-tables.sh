@@ -2,14 +2,14 @@
 
 set -euox pipefail
 
-N_CONTROLS=3 #0
-N_MORE=0 #1000
+N_CONTROLS=30
+N_MORE=1000
 TIME=5
 TIMEPOINTS=10
-INOCULUM=10000
+INOCULUM=1000
 K=10
 N=3
-SEQ_DEPTH=10000
+SEQ_DEPTH=1000
 
 bartab sim \
     "test/inputs/fitness.json" \

@@ -83,6 +83,7 @@ def load_anndata(
     reference: str = "wt",
     count_column: str = "count",
     timepoint_column: str = "timepoint",
+    concentration_column: Optional[str] = None,
     t0: Optional[Union[str, float, int]] = None,
     strain_id: Union[str, Iterable[str]] = "barcode_id",
     sample_id: Union[str, Iterable[str]] = "sample_id",
@@ -101,11 +102,20 @@ def load_anndata(
     culture_id = cast(culture_id, to=list)
 
     _check_cols(counts, strain_id + sample_id + [count_column])
-    _check_cols(sample_meta, sample_id + culture_id + [timepoint_column])
+    _check_cols(
+        sample_meta, 
+        sample_id + culture_id 
+        + [timepoint_column] 
+        + ([concentration_column] if concentration_column is not None else []),
+    )
     _check_cols(strain_meta, strain_id)
 
     sample_meta = _make_index(sample_meta, sample_id)
     sample_meta = _make_index(sample_meta, culture_id, name="__culture_index__")
+    if concentration_column is not None:
+        sample_meta["__inducer__"] = sample_meta[concentration_column].values
+    else:
+        sample_meta["__inducer__"] = "single dose"
     strain_meta = _make_index(strain_meta, strain_id)
 
     # validation
@@ -144,8 +154,17 @@ def load_anndata(
         X=counts_wide.values.astype(float),
         obs=strain_meta,
         var=sample_meta,
+        uns={
+            "reference": reference,
+            "timepoint_column": timepoint_column,
+            "t0": t0,
+            "count_column": count_column,
+            "concentration_column": concentration_column,
+            "reference": reference,
+            "spike": spike,
+            "strain_id": strain_id,
+            "culture_id": culture_id,
+            "sample_id": sample_id,
+        }
     )
-    adata.uns["reference"] = reference
-    adata.uns["spike"] = spike
-
     return adata

@@ -98,7 +98,7 @@ def volcano(
         y=y,
         data=df.query("__is_spike__"),
         scatter_opts={
-            "facecolor": "C1",
+            "facecolor": "lightgrey",
             "edgecolor": "none",
         },
         vline=1.,
@@ -136,21 +136,27 @@ def _layered_scatter_barcodes(
 
     dfs = []
     if x_obs is not None:
-        _x = adata.var[x_obs].values
+        X = adata.var[x_obs].values
+        x_col = x_obs
     elif x_layer is None:
-        _x = adata.X
+        X = adata.X
+        x_col = "X" 
     else:
-        _x = adata.layers[x_layer]
+        X = adata.layers[x_layer]
+        x_col = x_layer
     if layer is None:
         Y = adata.X
+        y_col = "Y" 
     else:
         Y = adata.layers[layer]
+        y_col = layer
     # print(_x.shape, Y.shape)
-    X = np.broadcast_to(_x[None] if _x.ndim < Y.ndim else _x, Y.shape).copy()
+    X = X[None] if X.ndim < Y.ndim else X
+    X = np.broadcast_to(X, Y.shape).copy()
     for i, (_x, _y, idx) in enumerate(zip(
         X,
         Y, 
-        adata.obs.index
+        adata.obs.index,
     )):
         if idx.startswith(control_prefix):
             scatter_opts = {
@@ -172,16 +178,16 @@ def _layered_scatter_barcodes(
                 "s": 5.,
             }
         this_df = pd.DataFrame({
-            x_obs: np.exp(_x) if exp_x else _x, 
-            layer: np.exp(_y) if exp_y else _y,
+            x_col: np.exp(_x) if exp_x else _x, 
+            y_col: np.exp(_y) if exp_y else _y,
         }).assign(**{
             "__index__": idx, 
             "__i__": i, 
         })
         ax = scatter(
             ax=ax,
-            x=x_obs,
-            y=layer,
+            x=x_col,
+            y=y_col,
             data=this_df,
             scatter_opts=scatter_opts,
         )
@@ -207,15 +213,14 @@ def pred_vs_true(
     fig, ax = _layered_scatter_barcodes(
         adata, 
         x_layer=f"{model_name}:predicted", 
-        layer=None, 
+        layer="__log_ratio__", 
         filename=filename,
-        exp_x=False, 
-        exp_y=False,
+        exp_x=True, 
+        exp_y=True,
         callback=lambda ax: ax.plot(ax.get_xlim(), ax.get_xlim(), color="lightgrey", zorder=-1),
         xlabel=f"Predicted: {model_name}",
         ylabel="Observed",
-        xscale="log",
-        yscale="log",
+        # xscale="log",
         **kwargs,
     )
     return fig, ax

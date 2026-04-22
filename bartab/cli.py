@@ -24,6 +24,7 @@ def _fitness(args: Namespace) -> None:
         count_column=args.count_column,
         timepoint_column=args.timepoint_column,
         t0=args.t0,
+        concentration_column=args.concentration_column,
         strain_id=args.barcode_column,
         sample_id=args.sample_column,
         culture_id=args.culture_column,
@@ -39,11 +40,11 @@ def _fitness(args: Namespace) -> None:
         use_spike=args.use_spike,
     )
     print_err(adata)
-    if args.concentration_column is None:
-        print_err(f"[INFO] Using a weighted least squares model")
-        model = AnnDataWLSModel()
-        kwargs = {}
-    else:
+    print_err(f"[INFO] Using a weighted least squares model")
+    model = AnnDataWLSModel()
+    kwargs = {}
+    results = model.fit(adata=adata, **kwargs)
+    if args.concentration_column is not None:
         if args.concentration_column not in adata.var:
             raise ValueError(
                 f"Concentration column '{args.concentration_column}' must be in the --sample-sheet."
@@ -54,7 +55,7 @@ def _fitness(args: Namespace) -> None:
         )
         model = AnnDataHillModel()
         kwargs = {"concentration": args.concentration_column}
-    results = model.fit(adata=adata, **kwargs)
+        results = model.fit(adata=results, **kwargs)
     print_err(results)
 
     print_err(f"[INFO] Writing to {args.output}")
@@ -144,12 +145,12 @@ def _simulate(args: Namespace) -> None:
         fitness_input = json.load(f)
     if args.generate_controls:
         fitness_input |= {
-            f"ctrl_{i:03d}": [10000., 0.] if args.n_dose else 1.
+            f"ctrl_{i:03d}": [10000., 1.] if args.n_dose else 1.
             for i in range(args.generate_controls)
         }
     if args.generate_more:
         fitness_input |= {
-            f"str_{i:03d}": [v, 1.] if args.n_dose else v
+            f"str_{i:03d}": [v, 0.] if args.n_dose else v
             for i, v in enumerate(
                 rng.uniform(0., 1.5, size=args.generate_more)
             )
@@ -162,8 +163,8 @@ def _simulate(args: Namespace) -> None:
         )
         fitness = {
             dose: {
-                strain: sigmoid(h * (np.log(ic50) - dose))
-                for strain, (ic50, h) in fitness_input.items()
+                strain: bottom + (1. - bottom) * sigmoid(1. * (np.log(ic50) - np.log(dose)))
+                for strain, (ic50, bottom) in fitness_input.items()
             } for dose in doses
         }
     else:
