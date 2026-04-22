@@ -1,5 +1,5 @@
 """Non-linear models."""
-from typing import Callable, Dict, Iterable, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional
 from functools import partial
 
 import numpy as np
