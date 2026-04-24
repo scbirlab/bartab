@@ -151,7 +151,7 @@ def do_analysis(*args):
         for a in args
     ]
     mode = args[-1]
-    concentration_column = args[3]
+    concentration_column = args[6]
     print_err(args[:-1])
     try:
         adata = _prepare_to_fit(*args[:-1])
