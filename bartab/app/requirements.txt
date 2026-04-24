@@ -1,0 +1,8 @@
+anndata
+carabiner-tools[pd,mpl]>=0.0.5.post3
+gradio==5.50.0
+nemony
+numpy
+scipy
+scikit-learn
+statsmodels
