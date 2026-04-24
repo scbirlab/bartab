@@ -119,6 +119,7 @@ class AnnDataOLSModel(AnnDataModel, OLSModel):
             *args,
             groups=adata.var[concentration_key].values if adata.uns["concentration_column"] else None,
             weights=None,
+            weight_kwargs={},
             **kwargs,
         )
 
