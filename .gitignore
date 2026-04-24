@@ -18,9 +18,16 @@ Hello.txt
 __pycache__/
 *.log
 
+# gradio
+.gradio/
+bartab-*
+
 # virtualenv/venv directories
 /venv/
 /bin/
 /include/
 /lib/
 /share/
+
+# test
+/test/inputs/*.csv
