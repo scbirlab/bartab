@@ -47,6 +47,7 @@ dependencies = [
 
 [project.optional-dependencies]
 all = []
+gradio = ["gradio>=5"]
 dev = ["pytest>=7.4", "pytest-cov", "flake8"]
 
 [project.urls]
