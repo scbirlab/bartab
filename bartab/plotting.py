@@ -74,7 +74,7 @@ def volcano(
     model_name,
     param: str = "fitness",
     p: str = "slope_p",
-    control_prefix="ctrl_",
+    control_prefix: str = "ctrl_",
     spike_color: str = "C1",
     highlight_barcodes: Optional[Iterable[str]] = None,
     filename: str = None,
@@ -156,7 +156,7 @@ def _layered_scatter_barcodes(
     filename: str = None,
     palette: str = None,
     spike_label: str = "__is_spike__",
-    control_prefix="ctrl_",
+    control_prefix: str = "ctrl_",
     color_by_barcode: bool = False,
     default_color: str = "lightgrey",
     spike_color: str = "C1",
@@ -216,6 +216,14 @@ def _layered_scatter_barcodes(
                 "label": "Spike" if not spike_plotted else "_none",
             }
             spike_plotted = True
+        elif adata.obs.loc[idx]["__is_reference__"]:
+            scatter_opts = {
+                "facecolor": "none",
+                "edgecolor": "black",
+                "zorder": 12,
+                "s": 20.,
+                "label": "Ref.",
+            }
         elif idx in highlight_barcodes:
             color = f"C{_avoid_color_collision(i + 2, [int(spike_color[1:]), 7, 8])}"
             scatter_opts = {
@@ -274,8 +282,30 @@ def pred_vs_true(
         exp_y=True,
         callback=lambda ax: ax.plot(ax.get_xlim(), ax.get_xlim(), color="lightgrey", zorder=-1),
         xlabel=f"Predicted: {model_name}",
-        ylabel="Observed",
+        ylabel="Observed:\nbarcode expansion ratio",
         # xscale="log",
+        **kwargs,
+    )
+    return fig, ax
+
+
+
+def expansion_vs_count(
+    adata,
+    filename: str = None,
+    **kwargs
+):
+    fig, ax = _layered_scatter_barcodes(
+        adata, 
+        layer=None, 
+        x_obs="__log_expansion__", 
+        filename=filename,
+        exp_x=True, 
+        exp_y=False,
+        # callback=lambda ax: ax.axhline(1., color="lightgrey", zorder=-1),
+        xlabel="Culture expansion ratio",
+        ylabel="Count",
+        yscale="log",
         **kwargs,
     )
     return fig, ax
@@ -293,9 +323,9 @@ def expansion_vs_ratio(
         filename=filename,
         exp_x=True, 
         exp_y=True,
-        callback=lambda ax: ax.axhline(0., color="lightgrey", zorder=-1),
-        xlabel="Culture expansion",
-        ylabel="Barcode expansion vs ref",
+        callback=lambda ax: ax.axhline(1., color="lightgrey", zorder=-1),
+        xlabel="Culture expansion ratio",
+        ylabel="Barcode expansion ratio",
         **kwargs,
     )
     return fig, ax
@@ -313,9 +343,9 @@ def time_vs_ratio(
         filename=filename,
         exp_x=False, 
         exp_y=True,
-        callback=lambda ax: ax.axhline(0., color="lightgrey", zorder=-1),
+        callback=lambda ax: ax.axhline(1., color="lightgrey", zorder=-1),
         xlabel="Timepoint",
-        ylabel="Barcode expansion vs ref",
+        ylabel="Barcode expansion ratio",
         **kwargs,
     )
     return fig, ax
@@ -333,7 +363,7 @@ def time_vs_count(
         filename=filename,
         exp_x=False, 
         exp_y=False,
-        callback=lambda ax: ax.axhline(0., color="lightgrey", zorder=-1),
+        # callback=lambda ax: ax.axhline(0., color="lightgrey", zorder=-1),
         xlabel="Timepoint",
         ylabel="Count",
         yscale="log",
@@ -398,6 +428,14 @@ def dose_response(
                 "zorder": 3,
             }
             control_plotted = True
+        elif barcode_name == adata.uns["reference"]:
+            scatter_opts = {
+                "facecolor": "none",
+                "edgecolor": "black",
+                "zorder": 12,
+                "s": 20.,
+                "label": "Ref.",
+            }
         elif barcode_name in highlight_barcodes:
             color = f"C{_avoid_color_collision(i + 2, [1, 7, 8])}"
             line_args = {

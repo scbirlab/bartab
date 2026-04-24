@@ -104,7 +104,7 @@ def compute_log_ratios(
             if growth_type == "density":
                 expansion[:, c_idx] = np.log(growth[c_idx]) - np.log(growth_t0_mean)
             else:
-                expansion[:, c_idx] = growth * np.log(2.)
+                expansion[:, c_idx] = growth[c_idx] * np.log(2.)
         expansion = -expansion
     else:
         raise ValueError(

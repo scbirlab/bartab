@@ -131,7 +131,7 @@ def _safe_nbinom_rvs(
                     **kwargs,
                 )
             else:
-                out[1] = 0
+                out[i] = 0
         return np.reshape(out, n.shape)
 
 

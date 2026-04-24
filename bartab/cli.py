@@ -536,9 +536,6 @@ def main() -> None:
             concentration_column,
             model_type,
             pseudocount,
-            plots,
-            plot_format,
-            formatting,
         ],
     )
 

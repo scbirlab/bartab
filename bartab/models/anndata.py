@@ -98,7 +98,11 @@ class AnnDataWLSModel(AnnDataModel, WLSModel):
         return super().fit(
             adata,
             *args,
-            groups=adata.var[concentration_key].values if adata.uns["concentration_column"] else None,
+            groups=(
+                adata.var[concentration_key].values 
+                if adata.uns["concentration_column"] and adata.var[concentration_key].nunique() > 1
+                else None
+            ),
             weight_kwargs={
                 "raw": adata.X,
                 "control_mask": adata.obs["__is_reference__"].values,
