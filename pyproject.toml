@@ -41,6 +41,7 @@ dependencies = [
   #"pydeseq2",
   "scipy",
   "scikit-learn",
+  "nemony",
   "numpy",
   "statsmodels",
 ]
