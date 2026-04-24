@@ -39,7 +39,7 @@ jobs:
         #pytest $(basename ${{ github.repository }}) --doctest-modules
         pytest bartab --doctest-modules
         # run other tests
-        #pytest test/test_evaluation.py
+        pytest test/test_suite.py
     - name: Test CLI - Simulation
       run: |
         bash test/scripts/generate-tables.sh
@@ -48,7 +48,10 @@ jobs:
         bash test/test-spike.sh
     - name: Test CLI - WLS growth
       run: |
-        bash test/test-growth.sh
+        bash test/test-growth-wls.sh
+    - name: Test CLI - OLS growth
+      run: |
+        bash test/test-growth-ols.sh
     - name: Test CLI - Dose response
       run: |
         bash test/test-dose.sh

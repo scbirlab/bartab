@@ -14,7 +14,7 @@ from . import __version__, appname
 def _fitness(args: Namespace) -> None:
 
     from .io import load_anndata
-    from .models.anndata import AnnDataWLSModel, AnnDataHillModel
+    from .models.anndata import AnnDataOLSModel, AnnDataWLSModel, AnnDataHillModel
     from .transforms import compute_log_ratios
 
     adata = load_anndata(
@@ -41,8 +41,12 @@ def _fitness(args: Namespace) -> None:
         use_spike=args.use_spike,
     )
     print_err(adata)
-    print_err(f"[INFO] Using a weighted least squares model")
-    model = AnnDataWLSModel()
+    if args.model_type == "OLS":
+        print_err(f"[INFO] Using an ordinary least squares model")
+        model = AnnDataOLSModel()
+    else:
+        print_err(f"[INFO] Using a weighted least squares model")
+        model = AnnDataWLSModel()
     kwargs = {}
     results = model.fit(adata=adata, **kwargs)
     if args.concentration_column is not None:
@@ -104,9 +108,16 @@ def _plot(args: Namespace) -> None:
     )
     adata = read_h5ad(args.inputs)
     dirname = os.path.dirname(args.output)
+    if args.model_type in adata.uns["models_fitted"]:
+        model_type = args.model_type
+    elif len(adata.uns["models_fitted"]) > 0:
+        model_type = adata.uns["models_fitted"][-1]
+        print_err(f"[WARN] Model type {args.model_type} was not fit on this dataset, falling back to {model_type}")
+    else:
+        raise ValueError(f"Model type {args.model_type} was not fit on this dataset, and no other model either.")
     if dirname:
         os.makedirs(dirname, exist_ok=True)
-    if args.model_type == "HillFitnessModel":
+    if model_type == "HillFitnessModel":
         fig, axes = dose_response(
             adata,
             highlight_barcodes=args.highlight,
@@ -136,18 +147,18 @@ def _plot(args: Namespace) -> None:
     fig, axes = pred_vs_true(
         adata,
         highlight_barcodes=args.highlight,
-        model_name=args.model_type,
+        model_name=model_type,
         filename=args.output + f"_pred-obs.{args.plot_format}",
     )
 
     fig, axes = volcano(
         adata,
         highlight_barcodes=args.highlight,
-        model_name=args.model_type,
-        param="ic50" if args.model_type == "HillFitnessModel" else "fitness",
-        xscale="log" if args.model_type == "HillFitnessModel" else "linear",
-        vline=None if args.model_type == "HillFitnessModel" else 1.,
-        p="log_ic50_p" if args.model_type == "HillFitnessModel" else "slope_p",
+        model_name=model_type,
+        param="ic50" if model_type == "HillFitnessModel" else "fitness",
+        xscale="log" if model_type == "HillFitnessModel" else "linear",
+        vline=None if model_type == "HillFitnessModel" else 1.,
+        p="log_ic50_p" if model_type == "HillFitnessModel" else "slope_p",
         filename=args.output + f"_volcano.{args.plot_format}",
     )
     return None

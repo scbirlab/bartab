@@ -2,6 +2,7 @@
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 from abc import ABC, abstractmethod
 
+from carabiner import print_err
 import pandas as pd
 import numpy as np
 from numpy.typing import ArrayLike
@@ -111,8 +112,14 @@ class Model(ABC):
         if weight_kwargs is None:
             weight_kwargs = {}
         if weights is None:
-            weights = [None] * Y.shape[0]
+            if len(weight_kwargs) > 0:
+                print_err(f"[INFO] Calculating observation weights: {weight_kwargs}")
+                weights = self.calculate_weights_matrix(Y, weights=None, **weight_kwargs)
+            else:
+                print_err("[INFO] Not calculating observation weights")
+                weights = [None] * Y.shape[0]
         else:
+            print_err(f"[INFO] Calculating observation weights: {weights=}, {weight_kwargs}")
             weights = self.calculate_weights_matrix(Y, weights, **weight_kwargs)
         if Y.shape[0] > 10:
             from tqdm.auto import tqdm
@@ -151,7 +158,7 @@ class Model(ABC):
                         _y,
                         _x,
                         valid=this_valid[group_mask],
-                        weights=w, 
+                        weights=None if w is None else w[group_mask], 
                         param_names=param_names,
                         **kwargs,
                     )
