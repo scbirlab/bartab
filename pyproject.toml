@@ -48,7 +48,7 @@ dependencies = [
 [project.optional-dependencies]
 all = []
 gradio = ["gradio>=5"]
-dev = ["pytest>=7.4", "pytest-cov", "flake8"]
+dev = ["pytest>=7.4", "pytest-cov", "flake8", "gradio>=5"]
 
 [project.urls]
 "Homepage" = "https://github.com/scbirlab/bartab"
