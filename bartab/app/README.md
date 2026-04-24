@@ -7,7 +7,7 @@ sdk: gradio
 sdk_version: "5.50.0"
 app_file: app.py
 pinned: true
-short_description: Fitness from sequencing-based pooled competition experiments.
+short_description: Fitness from pooled competition experiments.
 tags:
   - biology
   - sequencing
