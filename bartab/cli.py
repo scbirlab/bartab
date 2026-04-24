@@ -87,6 +87,7 @@ def _plot(args: Namespace) -> None:
     from anndata.io import read_h5ad
     from .plotting import (
         dose_response, 
+        expansion_vs_count,
         expansion_vs_ratio, 
         pred_vs_true,
         time_vs_count, 
@@ -114,6 +115,11 @@ def _plot(args: Namespace) -> None:
         adata,
         highlight_barcodes=args.highlight,
         filename=args.output + f"_time-ratio.{args.plot_format}",
+    )
+    fig, axes = expansion_vs_count(
+        adata,
+        highlight_barcodes=args.highlight,
+        filename=args.output + f"_expansion-count.{args.plot_format}",
     )
     fig, axes = expansion_vs_ratio(
         adata,
