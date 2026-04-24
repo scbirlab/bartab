@@ -1,6 +1,7 @@
 """Command-line interface for bartab."""
 
 from argparse import FileType, Namespace
+import os
 import sys
 
 from carabiner import print_err
@@ -59,6 +60,9 @@ def _fitness(args: Namespace) -> None:
     print_err(results)
 
     print_err(f"[INFO] Writing to {args.output}")
+    dirname = os.path.dirname(args.output)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
     if args.output.removesuffix(".gz").endswith(".h5ad"):
         results.write(
             args.output,
@@ -99,6 +103,9 @@ def _plot(args: Namespace) -> None:
         f"[INFO] Loading from {args.inputs}"
     )
     adata = read_h5ad(args.inputs)
+    dirname = os.path.dirname(args.output)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
     if args.model_type == "HillFitnessModel":
         fig, axes = dose_response(
             adata,
@@ -258,7 +265,9 @@ def _simulate(args: Namespace) -> None:
         is_reference=lambda x: x["strain_id"] == "wt",
         is_spike=lambda x: x["strain_id"] == "spike",
     )
-
+    dirname = os.path.dirname(args.output)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
     counts_df.to_csv(f"{args.output}_count.csv", index=False)
     meta_df.to_csv(f"{args.output}_sample_meta.csv", index=False)
     strain_meta_df.to_csv(f"{args.output}_strain_meta.csv", index=False)
