@@ -149,6 +149,7 @@ class Model(ABC):
 
             if this_valid.sum() < min_obs:
                 results.append(this_base_result)
+                _preds.append((np.array([]), np.full(x.shape, np.nan), np.full(x.shape, np.nan)))
                 continue
             if groups is None:
                 result, preds = self.fit_obs(
