@@ -121,31 +121,37 @@ def _plot(args: Namespace) -> None:
         fig, axes = dose_response(
             adata,
             highlight_barcodes=args.highlight,
+            control_prefix=args.control,
             model_name="WLS",
             filename=args.output + f"_dr.{args.plot_format}",
         )
     fig, axes = time_vs_count(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         filename=args.output + f"_time-count.{args.plot_format}",
     )
     fig, axes = time_vs_ratio(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         filename=args.output + f"_time-ratio.{args.plot_format}",
     )
     fig, axes = expansion_vs_count(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         filename=args.output + f"_expansion-count.{args.plot_format}",
     )
     fig, axes = expansion_vs_ratio(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         filename=args.output + f"_expansion-ratio.{args.plot_format}",
     )
     fig, axes = pred_vs_true(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         model_name=model_type,
         filename=args.output + f"_pred-obs.{args.plot_format}",
@@ -153,6 +159,7 @@ def _plot(args: Namespace) -> None:
 
     fig, axes = volcano(
         adata,
+        control_prefix=args.control,
         highlight_barcodes=args.highlight,
         model_name=model_type,
         param="ic50" if model_type == "HillFitnessModel" else "fitness",
@@ -365,6 +372,12 @@ def main() -> None:
         nargs="*",
         help='Names of barcode/guide/strains to highlight in plots.',
     )
+    control_prefix = CLIOption(
+        '--control', '-C',
+        type=str,
+        default="ctrl_",
+        help='Prefix of control guides to highlight.',
+    )
     culture_column = CLIOption(
         '--culture-column',
         type=str,
@@ -572,6 +585,7 @@ def main() -> None:
         options=[
             inputs_named,
             outputs_named,
+            control_prefix,
             highlight_barcodes,
             model_type,
             plot_format,
