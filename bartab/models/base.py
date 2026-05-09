@@ -72,6 +72,8 @@ class Model(ABC):
             valid = np.ones_like(y)
         y = y[valid]
         x = x[valid]
+        if weights is not None:
+            weights = np.asarray(weights)[valid]
         weights = self.calculate_weights(y, weights)
         betas, cis, ses, ps, preds, other = self._fit(y, x, weights=weights, param_names=param_names, **kwargs)
         result = betas | {
