@@ -68,14 +68,23 @@ class Model(ABC):
         param_names: Optional[str] = None, 
         **kwargs
     ) -> Dict[str, Union[float, int]]:
+        n_orig = len(y)
         if valid is None:
-            valid = np.ones_like(y)
+            valid = np.ones_like(y, dtype=bool)
+        y_full = y.copy()  # keep for padding later
         y = y[valid]
         x = x[valid]
         if weights is not None:
             weights = np.asarray(weights)[valid]
         weights = self.calculate_weights(y, weights)
         betas, cis, ses, ps, preds, other = self._fit(y, x, weights=weights, param_names=param_names, **kwargs)
+
+        # pad preds and y back to original shape for consistent stacking
+        preds_full = np.full(n_orig, np.nan)
+        preds_full[valid] = preds
+        y_out = np.full(n_orig, np.nan)
+        y_out[valid] = y
+
         result = betas | {
             f"{k}_p": v 
             for k, v in ps.items()
@@ -86,7 +95,7 @@ class Model(ABC):
             for k, v in cis.items() 
             for j, _v in zip(["low", "high"], v)
         } | {"nobs": y.shape[0]} | other
-        return self._fitness_transform(result), (x, y, preds)
+        return self._fitness_transform(result), (x, y_out, preds_full)
 
     def fit(
         self, 
