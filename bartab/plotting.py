@@ -339,7 +339,7 @@ def time_vs_ratio(
     fig, ax = _layered_scatter_barcodes(
         adata, 
         layer="__log_ratio__", 
-        x_obs="timepoint", 
+        x_obs=adata.uns["timepoint_column"], 
         filename=filename,
         exp_x=False, 
         exp_y=True,
@@ -359,7 +359,7 @@ def time_vs_count(
     fig, ax = _layered_scatter_barcodes(
         adata, 
         layer=None, 
-        x_obs="timepoint", 
+        x_obs=adata.uns["timepoint_column"], 
         filename=filename,
         exp_x=False, 
         exp_y=False,
