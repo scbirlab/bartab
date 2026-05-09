@@ -82,6 +82,8 @@ class Model(ABC):
         # pad preds and y back to original shape for consistent stacking
         preds_full = np.full(n_orig, np.nan)
         preds_full[valid] = preds
+        x_out = np.full(n_orig, np.nan)
+        x_out[valid] = x
         y_out = np.full(n_orig, np.nan)
         y_out[valid] = y
 
@@ -95,7 +97,7 @@ class Model(ABC):
             for k, v in cis.items() 
             for j, _v in zip(["low", "high"], v)
         } | {"nobs": y.shape[0]} | other
-        return self._fitness_transform(result), (x, y_out, preds_full)
+        return self._fitness_transform(result), (x_out, y_out, preds_full)
 
     def fit(
         self, 
@@ -149,6 +151,7 @@ class Model(ABC):
 
             if this_valid.sum() < min_obs:
                 results.append(this_base_result)
+                _preds.append((np.array([]), np.full(x.shape, np.nan), np.full(x.shape, np.nan)))
                 continue
             if groups is None:
                 result, preds = self.fit_obs(
