@@ -49,6 +49,9 @@ jobs:
     - name: Test CLI - WLS growth
       run: |
         bash test/test-growth-wls.sh
+    - name: Test CLI - WLS growth, multiple references
+      run: |
+        bash test/test-growth-wls-multiref.sh
     - name: Test CLI - OLS growth
       run: |
         bash test/test-growth-ols.sh
