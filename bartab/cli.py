@@ -98,6 +98,8 @@ def _plot(args: Namespace) -> None:
         expansion_vs_count,
         expansion_vs_ratio, 
         pred_vs_true,
+        pred_vs_resid,
+        count_vs_resid,
         time_vs_count, 
         time_vs_ratio, 
         volcano
@@ -155,6 +157,20 @@ def _plot(args: Namespace) -> None:
         highlight_barcodes=args.highlight,
         model_name=model_type,
         filename=args.output + f"_pred-obs.{args.plot_format}",
+    )
+    fig, axes = pred_vs_resid(
+        adata,
+        control_prefix=args.control,
+        highlight_barcodes=args.highlight,
+        model_name=model_type,
+        filename=args.output + f"_pred-resid.{args.plot_format}",
+    )
+    fig, axes = count_vs_resid(
+        adata,
+        control_prefix=args.control,
+        highlight_barcodes=args.highlight,
+        model_name=model_type,
+        filename=args.output + f"_pred-count.{args.plot_format}",
     )
 
     fig, axes = volcano(
