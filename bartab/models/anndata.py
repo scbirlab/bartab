@@ -68,6 +68,7 @@ class AnnDataModel(Model, ABC):
             **kwargs
         )
         adata.layers[f"{name}:predicted"] = preds
+        adata.layers[f"{name}:residual"] = y - preds
 
         results_with_index = []
         for i, (idx, res) in enumerate(zip(

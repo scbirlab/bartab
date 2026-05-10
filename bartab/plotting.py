@@ -272,12 +272,78 @@ def _layered_scatter_barcodes(
     return fig, ax
 
 
+def _rsq(obs, pred, log=False):
+    from scipy.stats import pearsonr
+    import numpy as np
+    if log:
+        obs, pred = np.log10(obs), np.log10(pred)
+    r = pearsonr(pred, obs).statistic
+    SS_res = np.sum(np.square(obs - pred))
+    SS_tot = np.sum(np.square(obs - np.mean(obs)))
+    R2 = 1. - SS_res / SS_tot
+    return r, R2
+
+
+def pred_vs_resid(
+    adata,
+    model_name,
+    filename: str = None,
+    **kwargs
+):
+    fig, ax = _layered_scatter_barcodes(
+        adata, 
+        x_layer=f"{model_name}:predicted", 
+        layer=f"{model_name}:residual", 
+        filename=filename,
+        exp_x=True, 
+        exp_y=True,
+        callback=lambda ax: ax.axhline(1., color="lightgrey", zorder=-1),
+        xlabel=f"Predicted: {model_name}",
+        ylabel="Residuals",
+        **kwargs,
+    )
+    return fig, ax
+
+
+def count_vs_resid(
+    adata,
+    model_name,
+    filename: str = None,
+    **kwargs
+):
+    fig, ax = _layered_scatter_barcodes(
+        adata, 
+        x_layer=None, 
+        layer=f"{model_name}:residual", 
+        filename=filename,
+        exp_x=False, 
+        exp_y=True,
+        callback=lambda ax: ax.axhline(1., color="lightgrey", zorder=-1),
+        xlabel="Counts",
+        ylabel="Residuals",
+        xscale="log",
+        **kwargs,
+    )
+    return fig, ax
+
+
 def pred_vs_true(
     adata,
     model_name,
     filename: str = None,
     **kwargs
 ):
+    from carabiner import print_err
+    
+    pred = adata.layers[f"{model_name}:predicted"].ravel()
+    r, R2 = _rsq(
+        pred, 
+        adata.layers["__log_ratio__"].ravel(), 
+        log=False,
+    )
+
+    message = f"Pearson r: {r:.2f}; Rsq = {R2:.2f}, n={len(pred)}"
+    print_err(f"[INFO] {message}")
     fig, ax = _layered_scatter_barcodes(
         adata, 
         x_layer=f"{model_name}:predicted", 
@@ -288,11 +354,10 @@ def pred_vs_true(
         callback=lambda ax: ax.plot(ax.get_xlim(), ax.get_xlim(), color="lightgrey", zorder=-1),
         xlabel=f"Predicted: {model_name}",
         ylabel="Observed:\nbarcode expansion ratio",
-        # xscale="log",
+        title=message,
         **kwargs,
     )
     return fig, ax
-
 
 
 def expansion_vs_count(
@@ -457,7 +522,6 @@ def dose_response(
                 "label": "_none",
                 "zorder": 0,
             }
-        # print(bc_df)
         ax.plot(
             "_concentration",
             "fitness",
