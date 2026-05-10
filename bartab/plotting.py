@@ -87,7 +87,9 @@ def volcano(
 ):
     fig, ax = grid(aspect_ratio=1.35)
     df = adata.obs
-    strain_id = adata.uns["strain_id"]
+    # strain_id = adata.uns["strain_id"]
+    # if isinstance(strain_id, list):
+    #     strain_id = strain_id[0]
     x = f"{model_name}:{param}"
     y = f"{model_name}:{p}"
     ax = scatter(
@@ -100,7 +102,7 @@ def volcano(
         ax=ax,
         x=x,
         y=y,
-        data=df.query(f"{strain_id}.str.startswith(@control_prefix)"),
+        data=df.query("__row_index__.str.startswith(@control_prefix)"),
         scatter_opts={
             "facecolor": "dimgrey",
             "edgecolor": "none",
