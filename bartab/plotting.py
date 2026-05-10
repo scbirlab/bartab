@@ -57,10 +57,7 @@ def scatter(
         **kwargs,
     )
     if "label" in scatter_opts:
-        if all([
-            len(scatter_opts["label"]) > 0,
-            scatter_opts["label"][0] != "_",
-        ]):
+        if scatter_opts["label"] != "_none":
             add_legend(ax)
     return ax
 
@@ -277,11 +274,14 @@ def _rsq(obs, pred, log=False):
     import numpy as np
     if log:
         obs, pred = np.log10(obs), np.log10(pred)
+    mask = np.isfinite(pred) & np.isfinite(obs)
+    pred, obs = pred[mask], obs[mask]
     r = pearsonr(pred, obs).statistic
     SS_res = np.sum(np.square(obs - pred))
     SS_tot = np.sum(np.square(obs - np.mean(obs)))
     R2 = 1. - SS_res / SS_tot
-    return r, R2
+    n = len(obs)
+    return r, R2, n
 
 
 def pred_vs_resid(
@@ -336,13 +336,13 @@ def pred_vs_true(
     from carabiner import print_err
     
     pred = adata.layers[f"{model_name}:predicted"].ravel()
-    r, R2 = _rsq(
+    r, R2, n = _rsq(
         pred, 
         adata.layers["__log_ratio__"].ravel(), 
         log=False,
     )
 
-    message = f"Pearson r: {r:.2f}; Rsq = {R2:.2f}, n={len(pred)}"
+    message = f"Pearson r = {r:.2f}; Rsq = {R2:.2f}, n = {n:,}"
     print_err(f"[INFO] {message}")
     fig, ax = _layered_scatter_barcodes(
         adata, 
