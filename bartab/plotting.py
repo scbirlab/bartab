@@ -56,7 +56,11 @@ def scatter(
         ylabel=ylabel or x,
         **kwargs,
     )
-    if "label" in scatter_opts:
+    if all([
+        "label" in scatter_opts,
+        len(scatter_opts["label"]) > 0,
+        scatter_opts["label"][0] != "_",
+    ]):
         add_legend(ax)
     return ax
 
@@ -68,6 +72,7 @@ def _avoid_color_collision(i, avoid=None):
         return _avoid_color_collision(i + 1, avoid)
     else:
         return i
+
 
 def volcano(
     adata,
@@ -82,6 +87,7 @@ def volcano(
 ):
     fig, ax = grid(aspect_ratio=1.35)
     df = adata.obs
+    strain_id = adata.uns["strain_id"]
     x = f"{model_name}:{param}"
     y = f"{model_name}:{p}"
     ax = scatter(
@@ -94,7 +100,7 @@ def volcano(
         ax=ax,
         x=x,
         y=y,
-        data=df.query("strain_id.str.startswith(@control_prefix)"),
+        data=df.query(f"{strain_id}.str.startswith(@control_prefix)"),
         scatter_opts={
             "facecolor": "dimgrey",
             "edgecolor": "none",
