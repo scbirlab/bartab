@@ -56,12 +56,12 @@ def scatter(
         ylabel=ylabel or x,
         **kwargs,
     )
-    if all([
-        "label" in scatter_opts,
-        len(scatter_opts["label"]) > 0,
-        scatter_opts["label"][0] != "_",
-    ]):
-        add_legend(ax)
+    if "label" in scatter_opts:
+        if all([
+            len(scatter_opts["label"]) > 0,
+            scatter_opts["label"][0] != "_",
+        ]):
+            add_legend(ax)
     return ax
 
 
