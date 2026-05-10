@@ -87,9 +87,6 @@ def volcano(
 ):
     fig, ax = grid(aspect_ratio=1.35)
     df = adata.obs
-    # strain_id = adata.uns["strain_id"]
-    # if isinstance(strain_id, list):
-    #     strain_id = strain_id[0]
     x = f"{model_name}:{param}"
     y = f"{model_name}:{p}"
     ax = scatter(
