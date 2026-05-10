@@ -20,10 +20,12 @@ import bartab
 from bartab.io import load_anndata
 from bartab.models.anndata import AnnDataWLSModel, AnnDataHillModel
 from bartab.plotting import (
+    count_vs_resid,
     dose_response,
     expansion_vs_count,
     expansion_vs_ratio, 
     pred_vs_true,
+    pred_vs_resid,
     time_vs_count, 
     time_vs_ratio, 
     volcano
@@ -291,6 +293,38 @@ def _plot_pred_vs_true(
 ):
     do_dose_response = mode == MODES["dose response"]
     return pred_vs_true(
+        adata,
+        model_name="HillFitnessModel" if do_dose_response else "WLS",
+        highlight_barcodes=highlight,
+        control_prefix=control_prefix,
+    )
+
+
+@_plot_wrapper(message="Plotting predicted vs residuals")
+def _plot_pred_vs_resid(
+    adata,
+    highlight=None,
+    control_prefix: str = "ctrl_",
+    mode: str = MODES["single"]
+):
+    do_dose_response = mode == MODES["dose response"]
+    return pred_vs_resid(
+        adata,
+        model_name="HillFitnessModel" if do_dose_response else "WLS",
+        highlight_barcodes=highlight,
+        control_prefix=control_prefix,
+    )
+
+
+@_plot_wrapper(message="Plotting counts vs residuals")
+def _plot_count_vs_resid(
+    adata,
+    highlight=None,
+    control_prefix: str = "ctrl_",
+    mode: str = MODES["single"]
+):
+    do_dose_response = mode == MODES["dose response"]
+    return count_vs_resid(
         adata,
         model_name="HillFitnessModel" if do_dose_response else "WLS",
         highlight_barcodes=highlight,
@@ -730,6 +764,17 @@ with gr.Blocks() as demo:
             "volcano": (
                 _invisible_plot(label="Volcano"),
                 _plot_volcano,
+            ),
+        }
+    with gr.Row():
+        plots |= {
+            "pred_resid": (
+                _invisible_plot(label="Predicted vs residuals"),
+                _plot_pred_vs_resid,
+            ),
+            "count_resid": (
+                _invisible_plot(label="Counts vs residuals"),
+                _plot_count_vs_resid,
             ),
         }
     with gr.Row():
