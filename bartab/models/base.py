@@ -1,5 +1,6 @@
 """Base classes for fitness models."""
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
+from typing import Any
+from collections.abc import Callable, Iterable, Mapping
 from abc import ABC, abstractmethod
 
 from carabiner import print_err
@@ -50,7 +51,7 @@ class Model(ABC):
     def calculate_weights_matrix(
         self, 
         Y: ArrayLike, 
-        weights: Optional[ArrayLike] = None, 
+        weights: ArrayLike | None = None, 
         **kwargs
     ) -> np.ndarray:
         if weights is None:
@@ -63,15 +64,14 @@ class Model(ABC):
         self, 
         y: ArrayLike, 
         x: ArrayLike, 
-        valid: Optional[ArrayLike] = None, 
-        weights: Optional[ArrayLike] = None, 
-        param_names: Optional[str] = None, 
+        valid: ArrayLike | None = None, 
+        weights: ArrayLike | None = None, 
+        param_names: str | None = None, 
         **kwargs
-    ) -> Dict[str, Union[float, int]]:
+    ) -> dict[str, float | int]:
         n_orig = len(y)
         if valid is None:
             valid = np.ones_like(y, dtype=bool)
-        y_full = y.copy()  # keep for padding later
         y = y[valid]
         x = x[valid]
         if weights is not None:
@@ -96,21 +96,23 @@ class Model(ABC):
             f"{k}_ci_{j}": _v 
             for k, v in cis.items() 
             for j, _v in zip(["low", "high"], v)
-        } | {"nobs": y.shape[0]} | other
+        } | {
+            "nobs": y.shape[0],
+        } | other
         return self._fitness_transform(result), (x_out, y_out, preds_full)
 
     def fit(
         self, 
         Y: ArrayLike, 
         x: ArrayLike, 
-        valid: Optional[ArrayLike] = None, 
-        weights: Optional[ArrayLike] = None, 
-        param_names: Optional[str] = None,
-        groups: Optional[ArrayLike] = None,
+        valid: ArrayLike | None = None, 
+        weights: ArrayLike | None = None, 
+        param_names: str | None = None,
+        groups: ArrayLike | None = None,
         min_obs: int = 3,
-        weight_kwargs: Optional[Mapping[str, Any]] = None,
+        weight_kwargs: Mapping[str, Any] | None = None,
         **kwargs
-    ) -> List[Dict[str, Union[float, int]]]:
+    ) -> list[dict[str, float | int]]:
             
         if valid is None:
             valid = np.ones(Y.shape[0], dtype=bool)
@@ -201,8 +203,8 @@ class LinearModel(Model):
         self, 
         y: ArrayLike, 
         x: ArrayLike,
-        param_names: Optional[Iterable[str]] = None, 
-        method: Optional[Callable] = None, 
+        param_names: Iterable[str] | None = None, 
+        method: Callable | None = None, 
         **kwargs
     ):
         if method is None:
@@ -232,7 +234,7 @@ class NonLinear(Model):
         model_fn: Callable,
         init_params: ArrayLike, 
         weights: ArrayLike, 
-        param_names: Optional[Iterable[str]] = None, 
+        param_names: Iterable[str] | None = None, 
         **kwargs
     ):
         from scipy.optimize import curve_fit

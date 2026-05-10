@@ -42,7 +42,8 @@ def _check_control(
     ref,
     name: str,
     check_presence: bool = False,
-    sep: str = "::"
+    sep: str = "::",
+    loose: bool = False
 ):
     new_col = f"__is_{name}__"
     if ref is None:
@@ -58,7 +59,10 @@ def _check_control(
             vals_to_check = df.index.values
         else:
             raise KeyError(f"Column {col} not in data")
-        df[new_col] = vals_to_check == ref
+        if not loose:
+            df[new_col] = vals_to_check == ref
+        else:
+            df[new_col] = vals_to_check.str.startswith(ref)
     n_refs = df[new_col].sum()
     if n_refs == 0 and check_presence:
         raise ValueError(f"No reference samples '{ref}' identified in '{col}'")
@@ -147,7 +151,7 @@ def load_anndata(
     strain_meta = strain_meta.set_index("__index__").loc[counts_wide.index].copy()
 
     sample_meta = _check_control(sample_meta, timepoint_column, t0, "t0", check_presence=True)
-    strain_meta = _check_control(strain_meta, "__index__", reference, "reference", check_presence=True)
+    strain_meta = _check_control(strain_meta, "__index__", reference, "reference", check_presence=True, loose=True)
     strain_meta = _check_control(strain_meta, "__index__", spike, "spike")
 
     adata = AnnData(
