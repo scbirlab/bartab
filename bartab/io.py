@@ -45,6 +45,7 @@ def _check_control(
     sep: str = "::",
     loose: bool = False
 ):
+    from pandas.api.types import is_string_dtype
     new_col = f"__is_{name}__"
     if ref is None:
         df[new_col] = False
@@ -56,13 +57,15 @@ def _check_control(
         elif col in df.index.names:
             vals_to_check = df.index.get_level_values(col)
         elif col == "__index__":
-            vals_to_check = df.index.values
+            vals_to_check = df.index
         else:
             raise KeyError(f"Column {col} not in data")
         if not loose:
             df[new_col] = vals_to_check == ref
-        else:
+        elif is_string_dtype(vals_to_check):
             df[new_col] = vals_to_check.str.startswith(ref)
+        else:
+            raise ValueError(f"Cannot do loose reference matching on non-string types: {vals_to_check}")
     n_refs = df[new_col].sum()
     if n_refs == 0 and check_presence:
         raise ValueError(f"No reference samples '{ref}' identified in '{col}'")
