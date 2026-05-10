@@ -94,7 +94,7 @@ def compute_log_ratios(
             raise ValueError(f"Column '{growth_column=}' not in sample metadata.")
         print_err(f"[INFO] Calculating culture expansion using {growth_column=}")
         growth = adata.var[growth_column].values
-        if (growth <= 0).any():
+        if (growth < 0).any():
             raise ValueError(
                 f"'{growth_column=}' contains non-positive values")
 
