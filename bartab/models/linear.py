@@ -11,6 +11,7 @@ def _delta_method_weights(
     raw: ArrayLike,           # (n_strains, n_samples) raw counts + pseudocount
     control_mask: ArrayLike,    # (n_strains,)
     dispersion: ArrayLike,  # (n_strains,) per-strain alpha
+    groups: Optional[ArrayLike] = None
 ) -> np.ndarray:
     """
     
@@ -31,8 +32,8 @@ def _delta_method_weights(
     True
     
     """
-    ref_counts = raw[control_mask, :].squeeze(axis=0)   # (n_samples,)
-    ref_disp = dispersion[control_mask].squeeze()    # scalar
+    ref_counts = raw[control_mask, :].sum(axis=0)   # (n_samples,)
+    ref_disp = _estimate_dispersion_mom(ref_counts[None], groups)    # scalar
     var_y = (
         1. / raw + dispersion[:, None]              # (n_strains, n_samples)
         + 1. / ref_counts + ref_disp
@@ -101,7 +102,7 @@ class WLSModel(LinearModel):
             raw,
             groups,
         )
-        return _delta_method_weights(raw, control_mask, dispersion)  # (n_strains, n_samples)
+        return _delta_method_weights(raw, control_mask, dispersion, groups)  # (n_strains, n_samples)
 
     @staticmethod
     def _fitness_transform(results: Mapping[str, float]) -> Dict[str, float]:
