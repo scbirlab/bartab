@@ -47,13 +47,16 @@ def compute_log_ratios(
     ref_mask = adata.obs["__is_reference__"].values   # (n_strains,)
     spike_mask = adata.obs["__is_spike__"].values     # (n_strains,)
 
-    if ref_mask.sum() != 1:
-        raise ValueError(f"Expected exactly 1 reference strain, found {ref_mask.sum()}")
+    n_ref = ref_mask.sum()
+    if n_ref == 0:
+        raise ValueError("No reference barcodes found")
+    if n_ref > 0:
+        print_err(f"Found {n_ref} reference barcodes: {', '.join(adata.obs.index[ref_mask].astype(str))}")
     if t0_mask.sum() == 0:
         raise ValueError("No t0 samples found")
 
     log_X = np.log(X)                                # (n_strains, n_samples)
-    log_ref = log_X[ref_mask, :]    # (1, n_samples,)
+    log_ref = np.log(np.sum(X[ref_mask, :], axis=0, keepdims=True))    # (1, n_samples,)
 
     # log(c_i / c_wt) at every sample
     log_ratio_to_ref = log_X - log_ref      # (n_strains, n_samples)

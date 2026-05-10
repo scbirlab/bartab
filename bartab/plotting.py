@@ -57,7 +57,11 @@ def scatter(
         **kwargs,
     )
     if "label" in scatter_opts:
-        add_legend(ax)
+        if all([
+            len(scatter_opts["label"]) > 0,
+            scatter_opts["label"][0] != "_",
+        ]):
+            add_legend(ax)
     return ax
 
 
@@ -68,6 +72,7 @@ def _avoid_color_collision(i, avoid=None):
         return _avoid_color_collision(i + 1, avoid)
     else:
         return i
+
 
 def volcano(
     adata,
@@ -94,7 +99,7 @@ def volcano(
         ax=ax,
         x=x,
         y=y,
-        data=df.query("strain_id.str.startswith(@control_prefix)"),
+        data=df.query("__row_index__.str.startswith(@control_prefix)"),
         scatter_opts={
             "facecolor": "dimgrey",
             "edgecolor": "none",

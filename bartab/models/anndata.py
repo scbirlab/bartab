@@ -87,14 +87,22 @@ class AnnDataModel(Model, ABC):
             results_df.set_index(_index_col), 
             how="left", 
             validate="one_to_one",
-            left_index=True, right_index=True
+            left_index=True, 
+            right_index=True,
         )
         adata.uns["models_fitted"].append(name)
         return adata
 
 
 class AnnDataWLSModel(AnnDataModel, WLSModel):
-    def fit(self, adata, *args, weight_kwargs=None, concentration_key: str = "__inducer__", **kwargs):
+    def fit(
+        self, 
+        adata, 
+        *args, 
+        weight_kwargs: None = None, 
+        concentration_key: str = "__inducer__", 
+        **kwargs
+    ):
         return super().fit(
             adata,
             *args,
@@ -113,7 +121,14 @@ class AnnDataWLSModel(AnnDataModel, WLSModel):
 
 
 class AnnDataOLSModel(AnnDataModel, OLSModel):
-    def fit(self, adata, *args, weights=None, concentration_key: str = "__inducer__", **kwargs):
+    def fit(
+        self, 
+        adata, 
+        *args, 
+        weights: None = None, 
+        concentration_key: str = "__inducer__", 
+        **kwargs
+    ):
         return super().fit(
             adata,
             *args,
@@ -125,8 +140,15 @@ class AnnDataOLSModel(AnnDataModel, OLSModel):
 
 
 class AnnDataHillModel(AnnDataModel, HillFitnessModel):
-    def fit(self, adata, *args, concentration: str, weight_kwargs=None, concentration_key: str = "__inducer__", **kwargs):
-        print(adata.var[concentration_key].values)
+    def fit(
+        self, 
+        adata, 
+        *args, 
+        concentration: str, 
+        weight_kwargs: None = None, 
+        concentration_key: str = "__inducer__", 
+        **kwargs
+    ):
         return super().fit(
             adata,
             *args,
