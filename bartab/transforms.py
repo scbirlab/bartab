@@ -56,8 +56,18 @@ def compute_log_ratios(
         raise ValueError("No t0 samples found")
 
     log_X = np.log(X)                                # (n_strains, n_samples)
-    log_ref = np.log(np.sum(X[ref_mask, :], axis=0, keepdims=True))    # (1, n_samples,)
+    ref_counts = np.nansum(X[ref_mask, :], axis=0, keepdims=True)
+    zero_ref_counts = ref_counts == 0.
+    if zero_ref_counts.all():
+        raise ValueError(
+            f"Reference counts in all samples are zero."
+        )
+    if zero_ref_counts.any():
+        raise ValueError(
+            f"The following samples have zero reference counts:\n{adata.var.loc[zero_ref_counts]}"
+        )
 
+    log_ref = np.log(ref_counts)    # (1, n_samples,)
     # log(c_i / c_wt) at every sample
     log_ratio_to_ref = log_X - log_ref      # (n_strains, n_samples)
     log_ratio = log_ratio_to_ref.copy()
@@ -106,8 +116,8 @@ def compute_log_ratios(
             growth_t0_mean = growth[t0_idx].mean()
             if growth_type == "density":
                 expansion[:, c_idx] = np.log(growth[c_idx]) - np.log(growth_t0_mean)
-            else:
-                expansion[:, c_idx] = growth[c_idx] * np.log(2.)
+            else:  # generations
+                expansion[:, c_idx] = (growth[c_idx] - growth_t0_mean) * np.log(2.)
         expansion = -expansion
     else:
         raise ValueError(
