@@ -32,7 +32,7 @@ def _delta_method_weights(
     True
     
     """
-    ref_counts = raw[control_mask, :].sum(axis=0)   # (n_samples,)
+    ref_counts = np.nansum(raw[control_mask, :], axis=0)   # (n_samples,)
     ref_disp = _estimate_dispersion_mom(ref_counts[None], groups)    # scalar
     var_y = (
         1. / raw + dispersion[:, None]              # (n_strains, n_samples)
