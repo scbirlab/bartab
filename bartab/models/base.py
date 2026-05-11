@@ -147,12 +147,17 @@ class Model(ABC):
             valid,
         )):
             this_base_result = base_result | {"i": i}
+            error_suffix = f"{_valid.mean()=}, {finite_y.mean()=}, {finite_X.mean()=}"
             this_valid = _valid & finite_y & finite_X
             if w is not None:
-                this_valid = this_valid & np.isfinite(w) & (w > 0.)
+                finite_w = np.isfinite(w)
+                nonzero_w = (w > 0.)
+                this_valid = this_valid & finite_w & nonzero_w
+                error_suffix += f", {finite_w.mean()=}, {nonzero_w.mean()=}"
 
-            if this_valid.sum() < min_obs:
-                results.append(this_base_result)
+            n_valid_obs = this_valid.sum()
+            if n_valid_obs < min_obs:
+                results.append(this_base_result | {"fit_status": f"fail:{n_valid_obs=} < {min_obs=}; {error_suffix}"})
                 _preds.append((np.array([]), np.full(x.shape, np.nan), np.full(x.shape, np.nan)))
                 continue
             if groups is None:
@@ -188,6 +193,10 @@ class Model(ABC):
             np.stack([_y for _, _y, _ in _preds]),
             np.stack([_p for _, _, _p in _preds]),
         )
+        all_failed = all(d["fit_status"].startswith("fail") for d in results)
+        if all_failed:
+            fail_modes = sorted(set(d["fit_status"].removeprefix("fail") for d in results if d["fit_status"].startswith("fail")))
+            raise ValueError(f"All fits failed: {fail_modes}")
         return results, _preds
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "bartab"
-version = "0.0.10"
+version = "0.0.10.post1"
 authors = [
   { name="Eachan Johnson", email="eachan.johnson@crick.ac.uk" },
 ]
