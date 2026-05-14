@@ -5,6 +5,8 @@
 ![PyPI](https://img.shields.io/pypi/v/bartab)
 [![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md-dark.svg)](https://huggingface.co/spaces/scbirlab/bartab)
 
+<img src="docs/source/_static/logo.svg" width="200">
+
 **bartab** estimates relative fitness from sequencing-based pooled competition experiments.
 
 It is designed for experiments where barcoded strains, guides, mutants, or constructs are grown together, sampled over time, and quantified by NGS read counts or UMI counts. `bartab` estimates the fitness of each barcode relative to a reference barcode, usually WT, using either spike-in normalisation or measured culture growth.
